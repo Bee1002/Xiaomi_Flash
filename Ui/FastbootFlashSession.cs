@@ -1,0 +1,734 @@
+#nullable disable
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using Xiaomi_Flash;
+
+namespace Xiaomi_Flash.Ui
+{
+    internal static class FastbootFlashSession
+    {
+        static volatile bool flashing;
+        static volatile bool cancelRequested;
+        static List<PartitionDisplayRow> rows = new List<PartitionDisplayRow>();
+        static RomFlashPlan loadedPlan;
+        static RomPackageInfo loadedPackage;
+        static string loadedRomRoot = "";
+        static string activeFlashSerial = "";
+        static bool sessionBypassAntiRb;
+        static bool sessionAutoReboot;
+        static bool rebootStepExecuted;
+        static bool suppressMethodChange;
+        static DateTime flashStartedAtUtc;
+        static DateTime currentStepStartedUtc;
+        static DispatcherTimer stepProgressTimer;
+        static int stepProgressPercent;
+        static string stepProgressOperation = "";
+        static int stepProgressFrame;
+        static volatile bool stepProgressBusy;
+
+        public static void Init()
+        {
+            if (MainWindow.THIS.ui_load_firmware != null)
+                MainWindow.THIS.ui_load_firmware.Click += delegate { OnLoadFirmwareClicked(); };
+
+            if (MainWindow.THIS.ui_start_flashing != null)
+                MainWindow.THIS.ui_start_flashing.Click += delegate { OnStartClicked(); };
+
+            if (MainWindow.THIS.ui_stop_flashing != null)
+                MainWindow.THIS.ui_stop_flashing.Click += delegate { RequestStop(); };
+
+            if (MainWindow.THIS.ui_flash_method != null)
+                MainWindow.THIS.ui_flash_method.SelectionChanged += OnFlashMethodComboChanged;
+
+            UpdateButtonState();
+        }
+
+        static bool HasLoadedFirmware()
+        {
+            return loadedPlan != null && loadedPlan.Steps.Count > 0;
+        }
+
+        public static void UpdateButtonState()
+        {
+            if (MainWindow.THIS == null)
+                return;
+
+            MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                bool deviceReady = FastbootUI.HasFastbootDevice();
+                bool firmwareReady = HasLoadedFirmware();
+
+                if (MainWindow.THIS.ui_load_firmware != null)
+                    MainWindow.THIS.ui_load_firmware.IsEnabled = !flashing;
+
+                if (MainWindow.THIS.ui_start_flashing != null)
+                    MainWindow.THIS.ui_start_flashing.IsEnabled = deviceReady && firmwareReady && !flashing;
+
+                if (MainWindow.THIS.ui_stop_flashing != null)
+                {
+                    MainWindow.THIS.ui_stop_flashing.IsEnabled = flashing;
+                    MainWindow.THIS.ui_stop_flashing.Opacity = flashing ? 1.0 : 0.55;
+                }
+
+                if (MainWindow.THIS.ui_opt_bypass_anti_rb != null)
+                    MainWindow.THIS.ui_opt_bypass_anti_rb.IsEnabled = !flashing;
+
+                if (MainWindow.THIS.ui_opt_autoreboot != null)
+                    MainWindow.THIS.ui_opt_autoreboot.IsEnabled = !flashing;
+
+                if (MainWindow.THIS.ui_flash_method != null)
+                    MainWindow.THIS.ui_flash_method.IsEnabled = !flashing && loadedPackage != null;
+            }));
+        }
+
+        static bool ReadBypassAntiRbOption()
+        {
+            if (MainWindow.THIS?.ui_opt_bypass_anti_rb == null)
+                return false;
+            return MainWindow.THIS.ui_opt_bypass_anti_rb.IsChecked == true;
+        }
+
+        static bool ReadAutoRebootOption()
+        {
+            if (loadedPlan != null && PlanIncludesReboot(loadedPlan))
+                return true;
+
+            if (MainWindow.THIS?.ui_opt_autoreboot == null)
+                return true;
+            return MainWindow.THIS.ui_opt_autoreboot.IsChecked == true;
+        }
+
+        static bool PlanIncludesReboot(RomFlashPlan plan)
+        {
+            foreach (FlashScriptStep step in plan.Steps)
+            {
+                if (step.Kind == FlashScriptStepKind.Reboot)
+                    return true;
+            }
+            return false;
+        }
+
+        static void UpdateAutoRebootOptionUi(RomFlashPlan plan)
+        {
+            if (MainWindow.THIS == null)
+                return;
+
+            bool scriptHasReboot = PlanIncludesReboot(plan);
+
+            if (MainWindow.THIS.ui_opt_autoreboot != null)
+            {
+                if (scriptHasReboot)
+                {
+                    MainWindow.THIS.ui_opt_autoreboot.Visibility = Visibility.Collapsed;
+                    MainWindow.THIS.ui_opt_autoreboot.IsChecked = true;
+                }
+                else
+                {
+                    MainWindow.THIS.ui_opt_autoreboot.Visibility = Visibility.Visible;
+                }
+            }
+
+            if (MainWindow.THIS.ui_autoreboot_note != null)
+                MainWindow.THIS.ui_autoreboot_note.Visibility = scriptHasReboot
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+        }
+
+        static void OnLoadFirmwareClicked()
+        {
+            if (flashing)
+                return;
+
+            Helper.pathSelect(delegate (string selectedPath)
+            {
+                RomPackageInfo package = RomPackageResolver.Resolve(selectedPath);
+                if (package.Methods.Count == 0)
+                {
+                    MessageBox.Show(
+                        "No se encontró un paquete ROM válido.\n\n" +
+                        "Selecciona la carpeta raíz de la ROM (con flash_all.bat, flash_all_lock.bat o payload.bin).\n" +
+                        "Si solo tienes imágenes sueltas, deben estar en una subcarpeta images\\.",
+                        "CARGAR FIRMWARE",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                loadedPackage = package;
+                loadedRomRoot = package.RomRoot;
+
+                if (!selectedPath.Equals(package.RomRoot, StringComparison.OrdinalIgnoreCase))
+                    TerminalLog.Info("ROM detectada en: " + package.RomRoot);
+
+                PopulateFlashMethods(package);
+                ApplySelectedFlashMethod();
+            });
+        }
+
+        static void OnFlashMethodComboChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (suppressMethodChange || flashing || loadedPackage == null)
+                return;
+
+            if (!(MainWindow.THIS?.ui_flash_method?.SelectedItem is RomFlashMethodOption))
+                return;
+
+            ApplySelectedFlashMethod();
+        }
+
+        static void PopulateFlashMethods(RomPackageInfo package)
+        {
+            MainWindow.THIS.Dispatcher.Invoke(delegate
+            {
+                ComboBox combo = MainWindow.THIS.ui_flash_method;
+                if (combo == null)
+                    return;
+
+                suppressMethodChange = true;
+                combo.ItemsSource = package.Methods;
+
+                RomFlashMethodOption preferred = null;
+                foreach (RomFlashMethodOption option in package.Methods)
+                {
+                    if (option.Method == RomFlashMethod.ScriptFlashAll)
+                    {
+                        preferred = option;
+                        break;
+                    }
+                }
+                combo.SelectedItem = preferred ?? package.Methods[0];
+                suppressMethodChange = false;
+            });
+        }
+
+        static void ApplySelectedFlashMethod()
+        {
+            if (loadedPackage == null)
+                return;
+
+            RomFlashMethodOption option = MainWindow.THIS.ui_flash_method?.SelectedItem as RomFlashMethodOption;
+            if (option == null)
+                return;
+
+            RomFlashPlan plan = RomFlashScanner.Scan(loadedPackage, option);
+            if (plan.Kind == RomFlashKind.None || plan.Steps.Count == 0)
+            {
+                MessageBox.Show(
+                    "No se pudieron leer operaciones para: " + option.DisplayName,
+                    "CARGAR FIRMWARE",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            loadedPlan = plan;
+            BuildPartitionTable(plan);
+            ResetRowsForFlash();
+            UpdateAutoRebootOptionUi(plan);
+            TerminalLog.Line("Firmware cargado [" + option.DisplayName + "]: " + plan.Steps.Count + " paso(s)");
+            SetMainProgress(0, option.DisplayName + " — " + option.Description);
+            UpdateButtonState();
+        }
+
+        static void OnStartClicked()
+        {
+            if (flashing)
+                return;
+
+            if (!HasLoadedFirmware())
+            {
+                MessageBox.Show(
+                    "Primero carga un firmware con [ CARGAR FIRMWARE ].",
+                    "START",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+                return;
+
+            sessionBypassAntiRb = ReadBypassAntiRbOption();
+            sessionAutoReboot = ReadAutoRebootOption();
+            activeFlashSerial = serial;
+            rebootStepExecuted = false;
+
+            string rebootLine = PlanIncludesReboot(loadedPlan)
+                ? "Auto reboot: incluido en el script"
+                : "Auto reboot: " + (sessionAutoReboot ? "Sí" : "No");
+
+            string optionsLine = "Modo: " + loadedPlan.ScriptFileName + "\n"
+                + loadedPlan.MethodDescription + "\n"
+                + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Sí" : "No") + "\n"
+                + rebootLine;
+
+            MessageBoxResult confirm = MessageBox.Show(
+                $"¿Iniciar flash de {loadedPlan.Steps.Count} paso(s)?\n\n{loadedRomRoot}\n\n{optionsLine}",
+                "START",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            ResetRowsForFlash();
+            TerminalCompletionBanner.Hide();
+
+            if (loadedPlan.Kind == RomFlashKind.Payload)
+            {
+                flashing = true;
+                cancelRequested = false;
+                flashStartedAtUtc = DateTime.UtcNow;
+                UpdateButtonState();
+                TerminalLog.Action("Payload flash iniciado");
+                SetMainProgress(0, "Preparando payload...");
+                FastbootUI.RunPayloadFlash(loadedPlan.PayloadPath!, OnFlashFinished, sessionBypassAntiRb, loadedRomRoot);
+                return;
+            }
+
+            BeginScriptFlash(serial, loadedPlan.Steps, sessionBypassAntiRb, sessionAutoReboot);
+        }
+
+        static void ResetRowsForFlash()
+        {
+            foreach (PartitionDisplayRow row in rows)
+            {
+                row.Status = "[ PENDING ]";
+                row.ProgressStr = "[-----------] --";
+            }
+
+            if (rows.Count == 0)
+                return;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                MainWindow.THIS.ui_partition_table.ItemsSource = null;
+                MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+            }));
+        }
+
+        static void BuildPartitionTable(RomFlashPlan plan)
+        {
+            rows.Clear();
+            int index = 1;
+            foreach (FlashScriptStep step in plan.Steps)
+            {
+                string size = "—";
+                if (step.Kind == FlashScriptStepKind.Flash && !string.IsNullOrEmpty(step.ImagePath))
+                {
+                    try
+                    {
+                        long bytes = new FileInfo(step.ImagePath).Length;
+                        size = Helper.byte2AUnit((ulong)bytes);
+                    }
+                    catch (IOException) { }
+                }
+
+                rows.Add(new PartitionDisplayRow
+                {
+                    Index = index.ToString("00"),
+                    Name = FormatStepName(step),
+                    ImageFile = step.ImagePath ?? "",
+                    Size = size,
+                    Status = "[ PENDING ]",
+                    ProgressStr = "[-----------] --"
+                });
+                index++;
+            }
+
+            MainWindow.THIS.Dispatcher.Invoke(delegate
+            {
+                MainWindow.THIS.ui_partition_table.ItemsSource = null;
+                MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+            });
+        }
+
+        static string FormatStepName(FlashScriptStep step)
+        {
+            switch (step.Kind)
+            {
+                case FlashScriptStepKind.Erase:
+                    return "[erase] " + step.Partition;
+                case FlashScriptStepKind.Reboot:
+                    return "[reboot] " + (string.IsNullOrEmpty(step.RebootTarget) ? "system" : step.RebootTarget);
+                case FlashScriptStepKind.SetActive:
+                    return "[slot] " + step.ActiveSlot;
+                case FlashScriptStepKind.OemLock:
+                    return "[lock] bootloader";
+                default:
+                    return step.DisplayName;
+            }
+        }
+
+        static void BeginScriptFlash(string serial, List<FlashScriptStep> steps, bool bypassAntiRb, bool autoReboot)
+        {
+            cancelRequested = false;
+            flashing = true;
+            flashStartedAtUtc = DateTime.UtcNow;
+            UpdateButtonState();
+            TerminalLog.Line("--- Flash started (" + steps.Count + " steps) ---");
+            SetMainProgress(0, "Iniciando flash...");
+
+            List<FlashScriptStep> queue = new List<FlashScriptStep>(steps);
+            if (bypassAntiRb)
+                queue = RemoveAntiFlashSteps(queue);
+
+            new Thread(new ThreadStart(delegate
+            {
+                bool allOk = true;
+                FastbootGate.EnterCritical();
+                try
+                {
+                    if (bypassAntiRb)
+                    {
+                        BeginStepProgress(0, "anti");
+                        bool antiOk = TryFlashAntiPartition(serial, loadedRomRoot);
+                        EndStepProgress();
+                        TerminalLog.StepResult("anti", antiOk);
+                        int antiRow = FindRowIndexByPartition("anti");
+                        if (antiRow >= 0)
+                            UpdateRow(antiRow, antiOk ? "[ OK ]" : "[ FAILED ]",
+                                antiOk ? "[##########] 100%" : "[##########] ERR");
+                        if (!antiOk)
+                            allOk = false;
+                    }
+
+                    if (!allOk)
+                        return;
+
+                    for (int i = 0; i < queue.Count; i++)
+                    {
+                        FlashScriptStep step = queue[i];
+                        int rowIndex = FindRowIndex(step);
+
+                        if (cancelRequested)
+                        {
+                            allOk = false;
+                            if (rowIndex >= 0)
+                                UpdateRow(rowIndex, "[ CANCELLED ]", "[-----------] --");
+                            break;
+                        }
+
+                        if (step.Kind == FlashScriptStepKind.Reboot && !autoReboot)
+                        {
+                            if (rowIndex >= 0)
+                                UpdateRow(rowIndex, "[ SKIPPED ]", "[-----------] --");
+                            continue;
+                        }
+
+                        if (rowIndex >= 0)
+                            UpdateRow(rowIndex, "[ RUNNING ]", "[====-------] --");
+
+                        int stepPercent = queue.Count > 0 ? i * 100 / queue.Count : 0;
+                        BeginStepProgress(stepPercent, FormatStepName(step));
+                        bool ok = ExecuteStep(serial, step, autoReboot);
+                        EndStepProgress();
+                        TerminalLog.StepResult(FormatStepName(step), ok);
+                        if (rowIndex >= 0)
+                            UpdateRow(rowIndex, ok ? "[ OK ]" : "[ FAILED ]", ok ? "[##########] 100%" : "[##########] ERR");
+                        if (!ok)
+                            allOk = false;
+                    }
+                }
+                finally
+                {
+                    FastbootGate.ExitCritical();
+                    OnFlashFinished(allOk);
+                }
+            })).Start();
+        }
+
+        static List<FlashScriptStep> RemoveAntiFlashSteps(List<FlashScriptStep> steps)
+        {
+            List<FlashScriptStep> filtered = new List<FlashScriptStep>();
+            foreach (FlashScriptStep step in steps)
+            {
+                if (step.Kind == FlashScriptStepKind.Flash
+                    && step.Partition.Equals("anti", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                filtered.Add(step);
+            }
+            return filtered;
+        }
+
+        static int FindRowIndex(FlashScriptStep step)
+        {
+            for (int i = 0; i < loadedPlan.Steps.Count; i++)
+            {
+                FlashScriptStep original = loadedPlan.Steps[i];
+                if (original.Kind == step.Kind
+                    && string.Equals(original.DisplayName, step.DisplayName, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(original.Partition, step.Partition, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(original.ImagePath, step.ImagePath, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(original.RebootTarget, step.RebootTarget, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(original.ActiveSlot, step.ActiveSlot, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
+
+        static int FindRowIndexByPartition(string partition)
+        {
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (rows[i].Name.Equals(partition, StringComparison.OrdinalIgnoreCase)
+                    || rows[i].Name.Equals("[erase] " + partition, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
+
+        internal static bool TryFlashAntiPartition(string serial, string romRoot)
+        {
+            string antiImage = RomFlashScanner.FindAntiImage(romRoot);
+            if (string.IsNullOrEmpty(antiImage) || !File.Exists(antiImage))
+            {
+                TerminalLog.Error("Bypass anti_RB: no se encontró imagen anti en la ROM");
+                return false;
+            }
+
+            FlashScriptStep step = new FlashScriptStep
+            {
+                Kind = FlashScriptStepKind.Flash,
+                Partition = "anti",
+                ImagePath = antiImage
+            };
+            return ExecuteFlashStep(serial, step);
+        }
+
+        static bool ExecuteStep(string serial, FlashScriptStep step, bool autoReboot)
+        {
+            switch (step.Kind)
+            {
+                case FlashScriptStepKind.Flash:
+                    return ExecuteFlashStep(serial, step);
+                case FlashScriptStepKind.Erase:
+                    return ExecuteFastbootCommand(serial, "erase \"" + step.Partition + "\"");
+                case FlashScriptStepKind.Reboot:
+                    if (!autoReboot)
+                        return true;
+                    rebootStepExecuted = true;
+                    string rebootCmd = string.IsNullOrEmpty(step.RebootTarget)
+                        ? "reboot"
+                        : "reboot " + step.RebootTarget;
+                    return ExecuteFastbootCommand(serial, rebootCmd);
+                case FlashScriptStepKind.SetActive:
+                    return ExecuteFastbootCommand(serial, "set_active " + step.ActiveSlot);
+                case FlashScriptStepKind.OemLock:
+                    return ExecuteFastbootCommand(serial, "oem lock");
+                default:
+                    return true;
+            }
+        }
+
+        static bool ExecuteFlashStep(string serial, FlashScriptStep step)
+        {
+            string cmd = "flash " + step.ExtraArgs;
+            if (cmd.Length > 6 && !cmd.EndsWith(" "))
+                cmd += " ";
+            cmd += "\"" + step.Partition + "\" \"" + step.ImagePath + "\"";
+            return ExecuteFastbootCommand(serial, cmd);
+        }
+
+        static bool ExecuteFastbootCommand(string serial, string cmd)
+        {
+            try
+            {
+                lock (FastbootGate.Sync)
+                {
+                    return Fastboot.Run(serial, cmd, FastbootUI.AppendTerminalLog, Fastboot.GetRebootTimeoutMs(cmd));
+                }
+            }
+            catch (Exception ex)
+            {
+                FastbootUI.AppendTerminalLog("ERROR: " + ex.Message);
+                return false;
+            }
+        }
+
+        static void OnFlashFinished(bool success)
+        {
+            flashing = false;
+            cancelRequested = false;
+
+            TimeSpan elapsed = flashStartedAtUtc != default
+                ? DateTime.UtcNow - flashStartedAtUtc
+                : TimeSpan.Zero;
+            flashStartedAtUtc = default;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                SetMainProgress(success ? 100 : 0, success ? "Flash completado" : "Flash detenido o con errores");
+                if (success)
+                {
+                    TerminalLog.FlashCompleted(elapsed);
+                    if (sessionAutoReboot && !rebootStepExecuted && !string.IsNullOrEmpty(activeFlashSerial))
+                        RunAutoReboot(activeFlashSerial);
+                }
+                else
+                    TerminalLog.FlashFailed(elapsed);
+
+                UpdateButtonState();
+                FastbootUI.RefreshConnectionPanel();
+            }));
+        }
+
+        static void RunAutoReboot(string serial)
+        {
+            TerminalLog.Action("Auto reboot...");
+            FastbootUI.RunStepCommand(serial, "reboot", 0, false, true);
+            rebootStepExecuted = true;
+        }
+
+        static void RequestStop()
+        {
+            if (!flashing)
+                return;
+            cancelRequested = true;
+            TerminalLog.Action("Deteniendo flash...");
+        }
+
+        static void UpdateRow(int index, string status, string progress)
+        {
+            if (index < 0 || index >= rows.Count)
+                return;
+
+            rows[index].Status = status;
+            rows[index].ProgressStr = progress;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                MainWindow.THIS.ui_partition_table.ItemsSource = null;
+                MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+            }));
+        }
+
+        static void BeginStepProgress(int percent, string operation)
+        {
+            stepProgressPercent = percent;
+            stepProgressOperation = operation ?? "";
+            stepProgressBusy = true;
+            currentStepStartedUtc = DateTime.UtcNow;
+            stepProgressFrame = 0;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                EnsureStepProgressTimer();
+                ApplyMainProgressDisplay(true);
+                stepProgressTimer.Start();
+            }));
+        }
+
+        static void EndStepProgress()
+        {
+            stepProgressBusy = false;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                stepProgressTimer?.Stop();
+                ApplyMainProgressDisplay(false);
+            }));
+        }
+
+        static void SetMainProgress(int percent, string operation)
+        {
+            stepProgressPercent = percent;
+            stepProgressOperation = operation ?? "";
+            stepProgressBusy = false;
+
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                stepProgressTimer?.Stop();
+                ApplyMainProgressDisplay(false);
+            }));
+        }
+
+        static void EnsureStepProgressTimer()
+        {
+            if (stepProgressTimer != null)
+                return;
+
+            stepProgressTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(220)
+            };
+            stepProgressTimer.Tick += delegate
+            {
+                if (!stepProgressBusy)
+                    return;
+
+                stepProgressFrame++;
+                ApplyMainProgressDisplay(true);
+            };
+        }
+
+        static void ApplyMainProgressDisplay(bool busy)
+        {
+            if (MainWindow.THIS == null)
+                return;
+
+            int percent = stepProgressPercent;
+            string bar = busy ? BuildBusyBar(percent, stepProgressFrame) : BuildBar(percent);
+            string suffix = busy ? " " + BusySpinner(stepProgressFrame) : "";
+
+            if (MainWindow.THIS.ui_main_progress_bar != null)
+            {
+                MainWindow.THIS.ui_main_progress_bar.Visibility = Visibility.Visible;
+                MainWindow.THIS.ui_main_progress_bar.IsIndeterminate = false;
+                MainWindow.THIS.ui_main_progress_bar.Value = percent;
+            }
+
+            if (MainWindow.THIS.ui_main_progress_text != null)
+                MainWindow.THIS.ui_main_progress_text.Text =
+                    $"OVERALL FLASH PROGRESS  [{bar}] {percent}%{suffix}";
+
+            if (MainWindow.THIS.ui_current_operation != null)
+            {
+                string operation = stepProgressOperation;
+                if (busy && currentStepStartedUtc != default)
+                {
+                    TimeSpan elapsed = DateTime.UtcNow - currentStepStartedUtc;
+                    operation += " (" + TerminalLog.FormatElapsed(elapsed) + ")";
+                }
+
+                MainWindow.THIS.ui_current_operation.Text = operation;
+            }
+        }
+
+        static string BuildBar(int percent)
+        {
+            int filled = Math.Clamp(percent / 5, 0, 20);
+            return new string('=', filled) + new string('-', 20 - filled);
+        }
+
+        static string BuildBusyBar(int percent, int frame)
+        {
+            int filled = Math.Clamp(percent / 5, 0, 20);
+            char[] bar = new char[20];
+            for (int i = 0; i < 20; i++)
+                bar[i] = i < filled ? '=' : '-';
+
+            int tail = 20 - filled;
+            if (tail > 0)
+            {
+                int pos = filled + (frame % tail);
+                bar[pos] = '>';
+            }
+            else if (filled > 0)
+                bar[filled - 1] = frame % 2 == 0 ? '>' : '=';
+
+            return new string(bar);
+        }
+
+        static string BusySpinner(int frame)
+        {
+            char[] spin = { '|', '/', '-', '\\' };
+            return spin[frame % spin.Length].ToString();
+        }
+    }
+}
