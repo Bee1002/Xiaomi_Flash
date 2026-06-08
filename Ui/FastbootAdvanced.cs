@@ -29,7 +29,7 @@ namespace Xiaomi_Flash
 
         static void RunResetEfs()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             MessageBoxResult confirm = MessageBox.Show(
@@ -43,12 +43,12 @@ namespace Xiaomi_Flash
                 return;
 
             TerminalLog.Action("Reset EFS: erase persist");
-            FastbootUI.RunStepCommand(serial, "erase persist", 2, true, true);
+            FastbootDeviceService.RunStepCommand(serial, "erase persist", 2, true, true);
         }
 
         static void RunFixBrick()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             MessageBoxResult confirm = MessageBox.Show(
@@ -62,15 +62,15 @@ namespace Xiaomi_Flash
                 return;
 
             TerminalLog.Action("Fix/Brick: erase misc");
-            FastbootUI.RunStepCommand(serial, "erase misc", 2, false, true, delegate
+            FastbootDeviceService.RunStepCommand(serial, "erase misc", 2, false, true, delegate
             {
-                FastbootUI.RunStepCommand(serial, "reboot bootloader", 0, false, true);
+                FastbootDeviceService.RunStepCommand(serial, "reboot bootloader", 0, false, true);
             });
         }
 
         static void RunSwitchSlot()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             string? current = null;
@@ -100,10 +100,10 @@ namespace Xiaomi_Flash
             }
 
             TerminalLog.Action("Switch active slot -> " + label);
-            FastbootUI.RunStepCommand(serial, cmd, 2, false, true, delegate
+            FastbootDeviceService.RunStepCommand(serial, cmd, 2, false, true, delegate
             {
                 FastbootAutoProbe.PatchCachedBootSlot(serial, label);
-                FastbootUI.RefreshConnectionPanel();
+                FastbootDeviceService.RefreshConnectionPanel();
             });
         }
     }

@@ -60,7 +60,7 @@ namespace Xiaomi_Flash.Ui
 
             MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
             {
-                bool deviceReady = FastbootUI.HasFastbootDevice();
+                bool deviceReady = FastbootDeviceService.HasFastbootDevice();
                 bool firmwareReady = HasLoadedFirmware();
 
                 if (MainWindow.THIS.ui_load_firmware != null)
@@ -250,7 +250,7 @@ namespace Xiaomi_Flash.Ui
                 return;
             }
 
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             sessionBypassAntiRb = ReadBypassAntiRbOption();
@@ -275,13 +275,16 @@ namespace Xiaomi_Flash.Ui
 
             if (loadedPlan.Kind == RomFlashKind.Payload)
             {
+                if (PayloadFastbootdGuard.BlocksPayloadFlash(serial))
+                    return;
+
                 flashing = true;
                 cancelRequested = false;
                 flashStartedAtUtc = DateTime.UtcNow;
                 UpdateButtonState();
                 TerminalLog.Action("Payload flash started");
                 SetMainProgress(0, "Preparing payload...");
-                FastbootUI.RunPayloadFlash(loadedPlan.PayloadPath!, OnFlashFinished, sessionBypassAntiRb, loadedRomRoot);
+                FastbootDeviceService.RunPayloadFlash(loadedPlan.PayloadPath!, OnFlashFinished, sessionBypassAntiRb, loadedRomRoot);
                 return;
             }
 
@@ -538,12 +541,12 @@ namespace Xiaomi_Flash.Ui
             {
                 lock (FastbootGate.Sync)
                 {
-                    return Fastboot.Run(serial, cmd, FastbootUI.AppendTerminalLog, Fastboot.GetRebootTimeoutMs(cmd));
+                    return Fastboot.Run(serial, cmd, FastbootDeviceService.AppendTerminalLog, Fastboot.GetRebootTimeoutMs(cmd));
                 }
             }
             catch (Exception ex)
             {
-                FastbootUI.AppendTerminalLog("ERROR: " + ex.Message);
+                FastbootDeviceService.AppendTerminalLog("ERROR: " + ex.Message);
                 return false;
             }
         }
@@ -571,14 +574,14 @@ namespace Xiaomi_Flash.Ui
                     TerminalLog.FlashFailed(elapsed);
 
                 UpdateButtonState();
-                FastbootUI.RefreshConnectionPanel();
+                FastbootDeviceService.RefreshConnectionPanel();
             }));
         }
 
         static void RunAutoReboot(string serial)
         {
             TerminalLog.Action("Auto reboot...");
-            FastbootUI.RunStepCommand(serial, "reboot", 0, false, true);
+            FastbootDeviceService.RunStepCommand(serial, "reboot", 0, false, true);
             rebootStepExecuted = true;
         }
 

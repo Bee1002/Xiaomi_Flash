@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$iconPath = Join-Path $root 'icon.ico'
+$iconPath = Join-Path $root 'Assets\icon.ico'
 $pngPath = Join-Path $root 'big_icon.png'
 
 Add-Type -AssemblyName System.Drawing

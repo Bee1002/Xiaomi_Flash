@@ -16,18 +16,18 @@ namespace Xiaomi_Flash.Ui
 
         public static string? Resolve(Dictionary<string, string> vars)
         {
-            string? fromFingerprint = FromFingerprint(FirstVar(vars,
+            string? fromFingerprint = FromFingerprint(FastbootVarHelper.FirstVar(vars,
                 "system-fingerprint", "vendor-fingerprint", "build-fingerprint"));
             if (!string.IsNullOrWhiteSpace(fromFingerprint))
                 return fromFingerprint;
 
-            string? explicitVersion = FirstVar(vars,
+            string? explicitVersion = FastbootVarHelper.FirstVar(vars,
                 "rom_version", "miui_version", "hyperos_version", "version-incremental");
             if (LooksLikeRomVersion(explicitVersion))
                 return explicitVersion;
 
-            string? os = FirstVar(vars, "version-os");
-            string? incremental = FirstVar(vars, "version-incremental");
+            string? os = FastbootVarHelper.FirstVar(vars, "version-os");
+            string? incremental = FastbootVarHelper.FirstVar(vars, "version-incremental");
             if (!string.IsNullOrWhiteSpace(os) && !string.IsNullOrWhiteSpace(incremental)
                 && LooksLikeRomVersion(incremental))
                 return incremental;
@@ -60,14 +60,5 @@ namespace Xiaomi_Flash.Ui
                 || value.StartsWith("OS", StringComparison.OrdinalIgnoreCase);
         }
 
-        static string? FirstVar(Dictionary<string, string> vars, params string[] keys)
-        {
-            foreach (string key in keys)
-            {
-                if (vars.TryGetValue(key, out string? value) && !string.IsNullOrWhiteSpace(value))
-                    return value.Trim();
-            }
-            return null;
-        }
     }
 }

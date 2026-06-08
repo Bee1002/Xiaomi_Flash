@@ -80,38 +80,48 @@ namespace Xiaomi_Flash.Ui
 
                 try
                 {
-                    string? port = UsbDeviceLocator.FindPortBySerial(serial);
-                    string stderr = FastbootAllVars.ReadAll(serial);
-                    var vars = FastbootAllVars.Parse(stderr);
-
-                    string? anti = vars.ContainsKey("anti")
-                        ? vars["anti"]
-                        : FastbootVarReader.GetVar(serial, "anti");
-
-                    snapshot = DeviceInfoMapper.FromVars(vars, serial, port, anti);
-
-                    if (string.IsNullOrWhiteSpace(snapshot.Storage))
-                    {
-                        string? variant = FastbootVarReader.GetVar(serial, "variant");
-                        snapshot.Storage = StorageTypeResolver.FromVariant(variant);
-                    }
-
-                    if (string.IsNullOrWhiteSpace(snapshot.BootSlot))
-                        snapshot.BootSlot = BootSlotResolver.FormatSlot(FastbootVarReader.GetVar(serial, "current-slot"));
-
+                    FastbootGate.EnterCritical();
                     try
                     {
-                        string hwid = FastbootAllVars.TryReadOemCommand(serial, "oem hwid");
-                        DeviceInfoMapper.ApplyOemHwid(snapshot, hwid);
-                    }
-                    catch (Exception) { }
+                        string? port = UsbDeviceLocator.FindPortBySerial(serial);
+                        FastbootData data = FastbootDeviceDataCache.GetOrLoad(serial);
 
-                    try
-                    {
-                        string deviceInfo = FastbootAllVars.TryReadOemCommand(serial, "oem device-info");
-                        DeviceInfoMapper.ApplyOemDeviceInfo(snapshot, deviceInfo);
+                        string? anti = data.bootloader_vars.TryGetValue("anti", out string? antiVal)
+                            ? antiVal
+                            : FastbootVarReader.GetVar(serial, "anti");
+
+                        snapshot = DeviceInfoMapper.FromFastbootData(data, serial, port);
+                        if (!string.IsNullOrWhiteSpace(anti))
+                            snapshot.AntiRollback = anti;
+
+                        if (string.IsNullOrWhiteSpace(snapshot.Storage))
+                        {
+                            string? variant = FastbootVarReader.GetVar(serial, "variant");
+                            snapshot.Storage = StorageTypeResolver.FromVariant(variant);
+                        }
+
+                        if (string.IsNullOrWhiteSpace(snapshot.BootSlot))
+                            snapshot.BootSlot = BootSlotResolver.FormatSlot(
+                                FastbootVarReader.GetVar(serial, "current-slot"));
+
+                        try
+                        {
+                            string hwid = FastbootAllVars.TryReadOemCommand(serial, "oem hwid");
+                            DeviceInfoMapper.ApplyOemHwid(snapshot, hwid);
+                        }
+                        catch (Exception) { }
+
+                        try
+                        {
+                            string deviceInfo = FastbootAllVars.TryReadOemCommand(serial, "oem device-info");
+                            DeviceInfoMapper.ApplyOemDeviceInfo(snapshot, deviceInfo);
+                        }
+                        catch (Exception) { }
                     }
-                    catch (Exception) { }
+                    finally
+                    {
+                        FastbootGate.ExitCritical();
+                    }
                 }
                 catch (Exception) { }
                 finally

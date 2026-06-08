@@ -1,4 +1,6 @@
-﻿#nullable disable
+﻿// UI legacy fastboot: poll de dispositivos, handlers del host oculto en MainWindow.xaml.
+// La API pública v2 está en Ui/FastbootDeviceService.cs.
+#nullable disable
 using ChromeosUpdateEngine;
 using System;
 using System.Collections.Generic;
@@ -9,21 +11,16 @@ using Xiaomi_Flash.Ui;
 
 namespace Xiaomi_Flash
 {
-    class FastbootUI
+    internal class FastbootUI
     {
         public const string PAYLOAD_TMP = ".\\payload.tmp.fastboot";
         static List<fastboot_devices_row> devices;
         static string cur_serial;
         static FastbootData fastbootData;
 
-        static Logger logger;
         static void appendLog(string logs)
         {
             TerminalLog.Append("FASTBOOT", logs);
-            if (logger == null)
-                return;
-
-            logger.appendLog(logs);
         }
 
         enum FastbootStatus
@@ -69,6 +66,7 @@ namespace Xiaomi_Flash
                 }
 
                 FastbootAutoProbe.Reset();
+                FastbootDeviceDataCache.Invalidate();
                 DeviceConnectionUi.SetNoDevice();
                 FastbootFlashSession.UpdateButtonState();
                 return;
@@ -110,6 +108,7 @@ namespace Xiaomi_Flash
                 }
 
                 FastbootAutoProbe.Reset();
+                FastbootDeviceDataCache.Invalidate();
                 DeviceConnectionUi.SetWrongMode(devices[0].name);
                 FastbootFlashSession.UpdateButtonState();
                 return;
@@ -337,6 +336,7 @@ namespace Xiaomi_Flash
         static void load_fastboot_vars()
         {
             // Reiniciar estado antes de cargar variables fastboot
+            FastbootDeviceDataCache.Invalidate(cur_serial);
             fastbootData = null;
             listHelper.clear();
             MainWindow.THIS.fastboot_partition_name_textbox.Text = "";
@@ -358,14 +358,7 @@ namespace Xiaomi_Flash
                 FastbootGate.EnterCritical();
                 try
                 {
-                    lock (FastbootGate.Sync)
-                    {
-                        using (Fastboot fastboot = new Fastboot(cur_serial, "getvar all"))
-                        {
-                            // Bug de fastboot: hay que leer stderr primero o stdout se bloquea
-                            fastbootData = new FastbootData(fastboot.stderr.ReadToEnd());
-                        }
-                    }
+                    fastbootData = FastbootDeviceDataCache.GetOrLoad(cur_serial);
                 }
                 finally
                 {
@@ -618,52 +611,9 @@ namespace Xiaomi_Flash
             return false;
         }
 
-        static bool vabStagingCheck()
+        static bool BlocksFlashForVab()
         {
-            if (fastbootData.snapshot_update_status != null
-                && fastbootData.snapshot_update_status != "none")
-            {
-                MessageBoxResult result = MessageBox.Show(
-                            Properties.Resources.fastboot_vab_staging_str1 + "\n" +
-                            Properties.Resources.fastboot_vab_staging_str2 + "\n" +
-                            Properties.Resources.fastboot_vab_staging_str3,
-                            Properties.Resources.fastboot_vab_staging_str0,
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes)
-                {
-                    return true;
-                }
-            }
-
-            bool cow_exist = false;
-            foreach (string key in fastbootData.partition_size.Keys)
-            {
-                if (key.EndsWith("cow"))
-                {
-                    cow_exist = true;
-                    break;
-                }
-            }
-
-            if (cow_exist)
-            {
-                MessageBoxResult result = MessageBox.Show(
-                            Properties.Resources.fastboot_cow_exist_str1 + "\n" +
-                            Properties.Resources.fastboot_cow_exist_str2 + "\n" +
-                            Properties.Resources.fastboot_cow_exist_str3,
-                            Properties.Resources.fastboot_cow_exist_str0,
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return fastbootData == null || FastbootVabGuard.BlocksFlash(fastbootData);
         }
 
         public static void init()
@@ -768,7 +718,7 @@ namespace Xiaomi_Flash
                 if (singlePartitionCheck())
                     return;
 
-                if (vabStagingCheck())
+                if (BlocksFlashForVab())
                     return;
 
                 string target = ((fastboot_partition_row)MainWindow.THIS.fastboot_partition_list.SelectedItem).name;
@@ -897,7 +847,7 @@ namespace Xiaomi_Flash
                 if (!checkCurDevExist())
                     return;
 
-                if (vabStagingCheck())
+                if (BlocksFlashForVab())
                     return;
 
                 Helper.fileSelect(new Helper.PathSelectCallback(delegate (string path)
@@ -958,68 +908,22 @@ namespace Xiaomi_Flash
                             return;
                         }
 
-                        Directory.CreateDirectory(PAYLOAD_TMP);
-
                         action_lock();
                         new Thread(new ThreadStart(delegate
                         {
-                            int count_full = payload.manifest.Partitions.Count * 2;
-                            int count = 0;
-                            foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
-                            {
-                                appendLog("Extracting " + partitionUpdate.PartitionName);
-                                Payload.PayloadExtractionException e = payload.extract(partitionUpdate.PartitionName,
-                                    PAYLOAD_TMP, false, false);
-
-                                if (e != null)
-                                {
-                                    MessageBox.Show(e.Message);
-                                    MainWindow.THIS.Dispatcher.Invoke(new Action(delegate
-                                    {
-                                        action_unlock();
-                                    }));
-                                    payload.Dispose();
-                                    return;
-                                }
-
-                                appendLog("Extracted " + partitionUpdate.PartitionName);
-
-                                MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
-                                {
-                                    MainWindow.THIS.fastboot_progress_bar.Value = 100 * ++count / count_full;
-                                    Helper.TaskbarItemHelper.update(100 * count / count_full);
-                                }));
-                            }
-
-                            foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
-                            {
-                                using (Fastboot fastboot = new Fastboot
-                                (cur_serial, "flash \"" + partitionUpdate.PartitionName + "\" \"" + PAYLOAD_TMP + "\\" + partitionUpdate.PartitionName + ".img\""))
-                                {
-                                    while (true)
-                                    {
-                                        string err = fastboot.stderr.ReadLine();
-
-                                        if (err == null)
-                                            break;
-
-                                        appendLog(err);
-                                    }
-
-                                    MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
-                                    {
-                                        MainWindow.THIS.fastboot_progress_bar.Value = 100 * ++count / count_full;
-                                        Helper.TaskbarItemHelper.update(100 * count / count_full);
-                                    }));
-                                }
-                            }
-
+                            bool ok = PayloadFlashExecutor.Run(
+                                cur_serial, payload, PAYLOAD_TMP, appendLog,
+                                onError: msg => MainWindow.THIS.Dispatcher.Invoke(
+                                    () => MessageBox.Show(msg)));
                             MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
                             {
-                                load_fastboot_vars();
-                                MessageBox.Show(Properties.Resources.operation_completed);
+                                action_unlock();
+                                if (ok)
+                                {
+                                    load_fastboot_vars();
+                                    MessageBox.Show(Properties.Resources.operation_completed);
+                                }
                             }));
-
                             payload.Dispose();
                         })).Start();
                     });
@@ -1045,22 +949,6 @@ namespace Xiaomi_Flash
                 listHelper.doFilter();
             };
 
-            MainWindow.THIS.fastboot_show_logs.Click += delegate
-            {
-                if ((bool)MainWindow.THIS.fastboot_show_logs.IsChecked)
-                {
-                    logger = new Logger(new Action(delegate
-                    {
-                        logger = null;
-                        MainWindow.THIS.fastboot_show_logs.IsChecked = false;
-                    }));
-                    logger.Show();
-                }
-                else
-                {
-                    logger.Close();
-                }
-            };
         }
 
         public static void RunPayloadFlash(string path, Action<bool> onComplete, bool bypassAntiRb = false, string romRoot = null)
@@ -1084,7 +972,7 @@ namespace Xiaomi_Flash
                     return;
                 }
 
-                if (vabStagingCheck())
+                if (BlocksFlashForVab())
                 {
                     onComplete?.Invoke(false);
                     return;
@@ -1117,72 +1005,21 @@ namespace Xiaomi_Flash
                     return;
                 }
 
-                Directory.CreateDirectory(PAYLOAD_TMP);
                 TerminalLog.Action("Payload flash: " + payload.manifest.Partitions.Count + " partitions");
 
                 new Thread(new ThreadStart(delegate
                 {
-                    FastbootGate.EnterCritical();
-                    bool ok = true;
-                    try
+                    bool ok = PayloadFlashExecutor.Run(
+                        serial, payload, PAYLOAD_TMP, appendLog, bypassAntiRb, romRoot,
+                        onError: msg => MainWindow.THIS.Dispatcher.Invoke(
+                            () => MessageBox.Show(msg)));
+                    payload.Dispose();
+                    MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
                     {
-                        if (bypassAntiRb && !string.IsNullOrEmpty(romRoot))
-                        {
-                            appendLog("Bypass anti_RB...");
-                            if (!FastbootFlashSession.TryFlashAntiPartition(serial, romRoot))
-                                ok = false;
-                        }
-
-                        int countFull = payload.manifest.Partitions.Count * 2;
-                        int count = 0;
-                        foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
-                        {
-                            appendLog("Extracting " + partitionUpdate.PartitionName);
-                            Payload.PayloadExtractionException e = payload.extract(partitionUpdate.PartitionName,
-                                PAYLOAD_TMP, false, false);
-
-                            if (e != null)
-                            {
-                                ok = false;
-                                MainWindow.THIS.Dispatcher.Invoke(delegate
-                                {
-                                    MessageBox.Show(e.Message);
-                                });
-                                break;
-                            }
-
-                            appendLog("Extracted " + partitionUpdate.PartitionName);
-                            count++;
-                        }
-
                         if (ok)
-                        {
-                            foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
-                            {
-                                lock (FastbootGate.Sync)
-                                {
-                                    string flashCmd = "flash \"" + partitionUpdate.PartitionName + "\" \""
-                                        + PAYLOAD_TMP + "\\" + partitionUpdate.PartitionName + ".img\"";
-                                    if (!Fastboot.Run(serial, flashCmd, appendLog))
-                                        ok = false;
-                                }
-                                if (!ok)
-                                    break;
-                                count++;
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        FastbootGate.ExitCritical();
-                        payload?.Dispose();
-                        MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
-                        {
-                            if (ok)
-                                MessageBox.Show(Properties.Resources.operation_completed);
-                            onComplete?.Invoke(ok);
-                        }));
-                    }
+                            MessageBox.Show(Properties.Resources.operation_completed);
+                        onComplete?.Invoke(ok);
+                    }));
                 })).Start();
             });
 
@@ -1191,17 +1028,8 @@ namespace Xiaomi_Flash
 
         static void ensureFastbootDataLoaded(string serial)
         {
-            if (fastbootData != null && cur_serial == serial)
-                return;
-
             cur_serial = serial;
-            lock (FastbootGate.Sync)
-            {
-                using (Fastboot fastboot = new Fastboot(cur_serial, "getvar all"))
-                {
-                    fastbootData = new FastbootData(fastboot.stderr.ReadToEnd());
-                }
-            }
+            fastbootData = FastbootDeviceDataCache.GetOrLoad(serial);
         }
     }
 }

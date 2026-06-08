@@ -7,7 +7,7 @@ namespace Xiaomi_Flash.Ui
     {
         public static string? Resolve(Dictionary<string, string> vars)
         {
-            string? explicitType = FirstVar(vars, "storage-type", "storage_type", "mmc_type");
+            string? explicitType = FastbootVarHelper.FirstVar(vars, "storage-type", "storage_type", "mmc_type");
             if (!string.IsNullOrWhiteSpace(explicitType))
             {
                 string? normalized = NormalizeToken(explicitType);
@@ -26,7 +26,7 @@ namespace Xiaomi_Flash.Ui
                 && ufsFlag.Equals("yes", StringComparison.OrdinalIgnoreCase))
                 return "UFS";
 
-            if (FirstVar(vars, "ufs_version", "ufs-version", "storage-vendor", "storage-model") != null)
+            if (FastbootVarHelper.FirstVar(vars, "ufs_version", "ufs-version", "storage-vendor", "storage-model") != null)
                 return "UFS";
 
             bool hasMmc = false;
@@ -44,7 +44,7 @@ namespace Xiaomi_Flash.Ui
             if (hasMmc && !hasUfsPartition)
                 return "eMMC";
 
-            string? storageValue = FirstVar(vars, "storage");
+            string? storageValue = FastbootVarHelper.FirstVar(vars, "storage");
             if (!string.IsNullOrWhiteSpace(storageValue))
             {
                 string? normalized = NormalizeToken(storageValue);
@@ -85,14 +85,5 @@ namespace Xiaomi_Flash.Ui
             return null;
         }
 
-        static string? FirstVar(Dictionary<string, string> vars, params string[] keys)
-        {
-            foreach (string key in keys)
-            {
-                if (vars.TryGetValue(key, out string? value) && !string.IsNullOrWhiteSpace(value))
-                    return value.Trim();
-            }
-            return null;
-        }
     }
 }

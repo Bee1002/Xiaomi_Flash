@@ -324,11 +324,11 @@
                 <!--
                   HOST UI LEGACY (oculto, no eliminado)
                   Este bloque mantiene vivos los controles fastboot/payload del proyecto original para que
-                  su code-behind (FastbootUI.init, PayloadUI.init) siga enlazando eventos y ejecutando
+                  su code-behind (FastbootDeviceService.Initialize, PayloadUI.init) siga enlazando eventos y ejecutando
                   la lógica fastboot/payload. NO se muestra en la UI v2.
 
                   Para exponer una función en la interfaz nueva más adelante:
-                    1. Reutilizar los handlers existentes en FastbootUI.cs / PayloadUI.cs / FastbootAdvanced.cs
+                    1. Reutilizar handlers en Legacy\FastbootUI.cs / Legacy\PayloadUI.cs / Ui\FastbootAdvanced.cs
                     2. Añadir un botón o panel visible en el grid principal de arriba — no borrar estos hosts.
 
                   Secciones incluidas:
@@ -356,7 +356,6 @@
                                 <Button x:Name="fastboot_logical_resize"/>
                             </StackPanel>
                         </GroupBox>
-                        <CheckBox x:Name="fastboot_show_logs"/>
                         <CheckBox x:Name="ignore_unknown_part"/>
                         <ProgressBar x:Name="fastboot_progress_bar" Visibility="Hidden"/>
                         <Grid x:Name="fastboot_action_bar" Visibility="Visible">

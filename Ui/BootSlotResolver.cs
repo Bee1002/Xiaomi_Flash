@@ -7,7 +7,7 @@ namespace Xiaomi_Flash.Ui
     {
         public static string? Resolve(Dictionary<string, string> vars)
         {
-            string? slot = FirstVar(vars, "current-slot");
+            string? slot = FastbootVarHelper.FirstVar(vars, "current-slot");
             if (!string.IsNullOrWhiteSpace(slot))
                 return FormatSlot(slot);
 
@@ -28,14 +28,5 @@ namespace Xiaomi_Flash.Ui
             return raw.Trim().ToUpperInvariant();
         }
 
-        static string? FirstVar(Dictionary<string, string> vars, params string[] keys)
-        {
-            foreach (string key in keys)
-            {
-                if (vars.TryGetValue(key, out string? value) && !string.IsNullOrWhiteSpace(value))
-                    return value.Trim();
-            }
-            return null;
-        }
     }
 }

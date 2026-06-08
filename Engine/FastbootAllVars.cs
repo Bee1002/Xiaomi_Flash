@@ -42,11 +42,6 @@ namespace Xiaomi_Flash
             }
         }
 
-        public static string? TryReadVar(string serial, string varName)
-        {
-            return FastbootVarReader.GetVar(serial, varName);
-        }
-
         public static string TryReadOemCommand(string serial, string command)
         {
             lock (FastbootGate.Sync)

@@ -42,7 +42,6 @@ namespace Xiaomi_Flash.Ui
                     DisplayName = "payload.bin",
                     Description = "OTA-style ROM (payload.bin)"
                 });
-                return info;
             }
 
             foreach ((string file, RomFlashMethod method, string title, string desc) in KnownScripts)

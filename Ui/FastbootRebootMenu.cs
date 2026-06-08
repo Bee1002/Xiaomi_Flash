@@ -29,33 +29,33 @@ namespace Xiaomi_Flash
 
         static void RunRebootSystem()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             TerminalLog.Action("Reboot -> system");
-            FastbootUI.RunStepCommand(serial, "reboot", 0, false, true);
+            FastbootDeviceService.RunStepCommand(serial, "reboot", 0, false, true);
         }
 
         static void RunRebootRecovery()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
             TerminalLog.Action("Reboot -> recovery");
-            FastbootUI.RunStepCommand(serial, "reboot recovery", 0, false, true);
+            FastbootDeviceService.RunStepCommand(serial, "reboot recovery", 0, false, true);
         }
 
         static void RunRebootFastboot()
         {
-            if (!FastbootUI.EnsureFastbootDevice(out string serial))
+            if (!FastbootDeviceService.EnsureFastbootDevice(out string serial))
                 return;
 
-            bool fastbootd = FastbootUI.IsDeviceFastbootd(serial);
+            bool fastbootd = FastbootDeviceService.IsDeviceFastbootd(serial);
             string cmd = fastbootd ? "reboot bootloader" : "reboot fastboot";
             string label = fastbootd ? "bootloader" : "fastboot";
 
             TerminalLog.Action("Reboot -> " + label);
-            FastbootUI.RunStepCommand(serial, cmd, fastbootd ? 2 : 3, false, true);
+            FastbootDeviceService.RunStepCommand(serial, cmd, fastbootd ? 2 : 3, false, true);
         }
     }
 }

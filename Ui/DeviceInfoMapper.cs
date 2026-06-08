@@ -17,19 +17,19 @@ namespace Xiaomi_Flash.Ui
             string? port,
             string? antiRollbackOverride)
         {
-            string? codename = FirstVar(vars, "product");
+            string? codename = FastbootVarHelper.FirstVar(vars, "product");
             DeviceHardwareSnapshot snapshot = new DeviceHardwareSnapshot
             {
-                Serial = FirstVar(vars, "serialno") ?? serial,
+                Serial = FastbootVarHelper.FirstVar(vars, "serialno") ?? serial,
                 Port = port,
                 Codename = codename,
                 Model = ResolveMarketingName(vars, codename),
                 Storage = StorageTypeResolver.Resolve(vars),
-                CpuId = FirstVar(vars, "soc-id", "chip-id", "cpuid", "cpu-id", "platform"),
-                HwRevision = FirstVar(vars, "hw-revision", "hwversion", "hw_version"),
-                SecureBoot = FormatSecure(FirstVar(vars, "secure")),
-                Bootloader = FormatBootloader(FirstVar(vars, "unlocked", "device-state")),
-                AntiRollback = antiRollbackOverride ?? FirstVar(vars, "anti", "rollback_ver", "rollback-index"),
+                CpuId = FastbootVarHelper.FirstVar(vars, "soc-id", "chip-id", "cpuid", "cpu-id", "platform"),
+                HwRevision = FastbootVarHelper.FirstVar(vars, "hw-revision", "hwversion", "hw_version"),
+                SecureBoot = FormatSecure(FastbootVarHelper.FirstVar(vars, "secure")),
+                Bootloader = FormatBootloader(FastbootVarHelper.FirstVar(vars, "unlocked", "device-state")),
+                AntiRollback = antiRollbackOverride ?? FastbootVarHelper.FirstVar(vars, "anti", "rollback_ver", "rollback-index"),
                 FirmwareVersion = FirmwareVersionResolver.Resolve(vars),
                 BootSlot = BootSlotResolver.Resolve(vars),
             };
@@ -76,7 +76,7 @@ namespace Xiaomi_Flash.Ui
 
         static string? ResolveMarketingName(Dictionary<string, string> vars, string? codename)
         {
-            string? market = FirstVar(vars, "marketname", "market-name", "friendly-product-name", "device-name");
+            string? market = FastbootVarHelper.FirstVar(vars, "marketname", "market-name", "friendly-product-name", "device-name");
             if (!string.IsNullOrWhiteSpace(market))
                 return market;
 
@@ -133,14 +133,5 @@ namespace Xiaomi_Flash.Ui
             return snapshot;
         }
 
-        static string? FirstVar(Dictionary<string, string> vars, params string[] keys)
-        {
-            foreach (string key in keys)
-            {
-                if (vars.TryGetValue(key, out string? value) && !string.IsNullOrWhiteSpace(value))
-                    return value.Trim();
-            }
-            return null;
-        }
     }
 }

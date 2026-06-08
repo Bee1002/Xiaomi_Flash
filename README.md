@@ -25,6 +25,19 @@ The application still ships the full fastboot/payload engine from earlier versio
 
 See the `LEGACY UI HOST` comment block in `MainWindow.xaml` for integration notes.
 
+### Project layout
+
+| Folder | Role |
+|--------|------|
+| `Engine/` | Fastboot process, payload parser, shared helpers |
+| `Ui/` | v2 UI workflow (`FastbootFlashSession`, ROM scanner, guards) |
+| `Legacy/` | Hidden legacy hosts (`FastbootUI`, `PayloadUI`) |
+| `Generated/` | Protobuf (`UpdateMetadata.cs` — do not edit) |
+| `Assets/` | `fastboot.exe`, USB/LZMA DLLs, icon, fonts (copied next to `.exe` on build) |
+| `ThirdParty/` | BZip2 + LZMA decompressors |
+
+Public API for v2 code: `Ui/FastbootDeviceService.cs`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for contributor entry points.
+
 ## Requirements
 
 - Windows 10/11 (x86 or x64 build)
@@ -146,11 +159,33 @@ If the designer shows *"Could not load file or assembly Xiaomi_Flash"*:
 2. Delete the project `obj\` folder (or run `dotnet clean`).
 3. Open the solution and build **Debug | x86** once before opening `.xaml` files.
 
-## Distribution (publish)
+## Distribution (production)
+
+**Recommended for end users:** self-contained **x64** installer (no .NET install required).
+
+```powershell
+# From project root — publish + portable ZIP
+powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip
+
+# Publish + Windows installer (requires Inno Setup 6)
+powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Installer
+```
+
+| Output | Path |
+|--------|------|
+| Portable folder | `publish\self-contained-x64\` |
+| Portable ZIP | `publish\zip\Xiaomi_Flash_2.0.1_x64_portable.zip` |
+| Setup installer | `publish\installer\Xiaomi_Flash_2.0.1_Setup_x64.exe` |
+
+Install [Inno Setup 6](https://jrsoftware.org/isdl.php) once to compile `tools\XiaomiFlash.iss`. The installer uses `PrivilegesRequired=lowest` (no admin) and defaults to `%LocalAppData%\Xiaomi Flash`.
+
+**Code signing (optional, recommended for wide release):** sign the setup `.exe` with an Authenticode certificate to reduce SmartScreen warnings.
+
+### Manual publish profiles
 
 Publish profiles live in `Properties/PublishProfiles/`. They only apply to `dotnet publish`, not to normal Debug/Release builds.
 
-### Recommended: publish profiles
+### Publish profiles
 
 **Framework-dependent** (smaller folder, ~5–15 MB; requires [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) on the target PC):
 

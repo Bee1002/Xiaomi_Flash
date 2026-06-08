@@ -1,4 +1,5 @@
-﻿#nullable disable
+﻿// UI legacy: extractor standalone de Payload.bin (controles ocultos en MainWindow.xaml).
+#nullable disable
 using ChromeosUpdateEngine;
 using System;
 using System.Threading;

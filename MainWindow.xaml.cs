@@ -13,8 +13,6 @@ namespace Xiaomi_Flash
     /// </summary>
     public partial class MainWindow : Window
     {
-        const string ProjectRepositoryUrl = "https://github.com/Bee1002/Xiaomi_Flash";
-
         public static MainWindow THIS = null!;
 
         public MainWindow()
@@ -40,12 +38,12 @@ namespace Xiaomi_Flash
 
             try
             {
-                new DirectoryInfo(FastbootUI.PAYLOAD_TMP).Delete(true);
+                new DirectoryInfo(FastbootDeviceService.PayloadTmp).Delete(true);
             }
             catch (DirectoryNotFoundException) { }
 
             PayloadUI.init();
-            FastbootUI.init();
+            FastbootDeviceService.Initialize();
 
             Closed += delegate
             {
@@ -61,28 +59,13 @@ namespace Xiaomi_Flash
 
                 try
                 {
-                    new DirectoryInfo(FastbootUI.PAYLOAD_TMP).Delete(true);
+                    new DirectoryInfo(FastbootDeviceService.PayloadTmp).Delete(true);
                 }
                 catch (DirectoryNotFoundException) { }
                 catch (IOException) { }
 
                 Process.GetCurrentProcess().Kill();
             };
-        }
-
-        private void Credits_Click(object sender, RoutedEventArgs e)
-        {
-            OpenProjectRepository();
-        }
-
-        private void OSS_Click(object sender, RoutedEventArgs e)
-        {
-            OpenProjectRepository();
-        }
-
-        static void OpenProjectRepository()
-        {
-            Process.Start(new ProcessStartInfo(ProjectRepositoryUrl) { UseShellExecute = true });
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -112,7 +95,7 @@ namespace Xiaomi_Flash
 
         private void RebootButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!FastbootUI.HasFastbootDevice())
+            if (!FastbootDeviceService.HasFastbootDevice())
             {
                 MessageBox.Show(
                     Properties.Resources.fastboot_device_not_exist,
