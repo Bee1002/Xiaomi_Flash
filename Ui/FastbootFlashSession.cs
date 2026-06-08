@@ -70,10 +70,10 @@ namespace Xiaomi_Flash.Ui
                     MainWindow.THIS.ui_start_flashing.IsEnabled = deviceReady && firmwareReady && !flashing;
 
                 if (MainWindow.THIS.ui_stop_flashing != null)
-                {
                     MainWindow.THIS.ui_stop_flashing.IsEnabled = flashing;
-                    MainWindow.THIS.ui_stop_flashing.Opacity = flashing ? 1.0 : 0.55;
-                }
+
+                if (MainWindow.THIS.ui_reboot != null)
+                    MainWindow.THIS.ui_reboot.IsEnabled = deviceReady && !flashing;
 
                 if (MainWindow.THIS.ui_opt_bypass_anti_rb != null)
                     MainWindow.THIS.ui_opt_bypass_anti_rb.IsEnabled = !flashing;

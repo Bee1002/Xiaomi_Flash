@@ -97,8 +97,7 @@ namespace Xiaomi_Flash
 
         private void AdvancedButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ui_reboot_menu != null)
-                ui_reboot_menu.Visibility = Visibility.Collapsed;
+            FastbootRebootMenu.HideMenu();
             if (ui_advanced_menu != null)
                 ui_advanced_menu.Visibility = ui_advanced_menu.Visibility == Visibility.Visible
                     ? Visibility.Collapsed : Visibility.Visible;
@@ -106,6 +105,16 @@ namespace Xiaomi_Flash
 
         private void RebootButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!FastbootUI.HasFastbootDevice())
+            {
+                MessageBox.Show(
+                    Properties.Resources.fastboot_device_not_exist,
+                    "[ REBOOT ]",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             FastbootAdvanced.HideMenu();
             if (ui_reboot_menu != null)
                 ui_reboot_menu.Visibility = ui_reboot_menu.Visibility == Visibility.Visible

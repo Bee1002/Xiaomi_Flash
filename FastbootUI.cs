@@ -147,6 +147,21 @@ namespace Xiaomi_Flash
             return findFirstFastbootDevice() != null;
         }
 
+        public static bool IsDeviceFastbootd(string serial)
+        {
+            if (devices == null || string.IsNullOrWhiteSpace(serial))
+                return false;
+
+            foreach (fastboot_devices_row row in devices)
+            {
+                if (row.serial.Equals(serial, StringComparison.OrdinalIgnoreCase)
+                    && IsFastbootMode(row.name))
+                    return row.name.Equals("fastbootd", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
+        }
+
         public static void AppendTerminalLog(string line)
         {
             TerminalLog.FastbootOutput(line);
@@ -661,6 +676,7 @@ namespace Xiaomi_Flash
             new Thread(new ThreadStart(devicesListRefresher)).Start();
 
             FastbootAdvanced.Init();
+            FastbootRebootMenu.Init();
             FastbootFlashSession.Init();
 
             MainWindow.THIS.fastboot_devices_list.MouseDoubleClick += delegate

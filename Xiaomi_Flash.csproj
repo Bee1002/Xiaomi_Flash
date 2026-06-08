@@ -52,6 +52,16 @@
   <ItemGroup>
     <Resource Include="big_icon.png" />
     <Resource Include="icon.ico" />
+    <Content Include="icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\xiaomi_codenames.json" />
+    <Content Include="Data\xiaomi_codenames.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

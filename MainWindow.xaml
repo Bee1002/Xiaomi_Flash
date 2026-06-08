@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         d:DesignHeight="740" d:DesignWidth="1140"
         Title="XIAOMI FASTBOOT FLASHER v2.1 [BETA]"
+        Icon="icon.ico"
         Height="740" Width="1140"
         MinHeight="660" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
@@ -216,16 +217,12 @@
                                 <Button x:Name="ui_start_flashing" Content="[ START ]"
                                         Style="{StaticResource FuturisticButton}" Padding="14,9"
                                         Margin="0,0,8,0" Background="#111115" IsEnabled="False"/>
-                                <Grid Margin="0,0,8,0" Height="36" MinWidth="110">
-                                    <Rectangle Stroke="White" StrokeThickness="1" StrokeDashArray="3 2"/>
-                                    <Button x:Name="ui_stop_flashing" Content="[ STOP ]"
-                                            Style="{StaticResource FuturisticButton}" Padding="14,9"
-                                            IsEnabled="False" BorderThickness="0" Background="Transparent"
-                                            Opacity="0.55" MinWidth="110" Height="34"/>
-                                </Grid>
+                                <Button x:Name="ui_stop_flashing" Content="[ STOP ]"
+                                        Style="{StaticResource FuturisticButton}" Padding="14,9"
+                                        Margin="0,0,8,0" IsEnabled="False" MinWidth="110"/>
                                 <Button x:Name="ui_reboot" Content="[ REBOOT ]  ∨"
                                         Style="{StaticResource FuturisticButton}" Padding="14,9"
-                                        MinWidth="120" Click="RebootButton_Click"/>
+                                        MinWidth="120" IsEnabled="False" Click="RebootButton_Click"/>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
                                 <TextBlock Text="Modo:" VerticalAlignment="Center" Foreground="#888888"
@@ -265,11 +262,20 @@
                             </Border>
                             <Border Grid.Row="3" x:Name="ui_reboot_menu" BorderBrush="White" BorderThickness="1"
                                     Background="#000000" Margin="0,6,0,0" Padding="10,8"
-                                    HorizontalAlignment="Right" MinWidth="140" Visibility="Collapsed">
+                                    HorizontalAlignment="Right" MinWidth="160" Visibility="Collapsed">
                                 <StackPanel>
-                                    <TextBlock Margin="0,3" Text="&gt; System"/>
-                                    <TextBlock Margin="0,3" Text="&gt; Fastboot"/>
-                                    <TextBlock Margin="0,3" Text="&gt; Recovery"/>
+                                    <Button x:Name="ui_reboot_system" Content="&gt; System"
+                                            Background="Transparent" Foreground="White" BorderThickness="0"
+                                            Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
+                                            FontFamily="Consolas" FontSize="11" Cursor="Hand"/>
+                                    <Button x:Name="ui_reboot_fastboot" Content="&gt; Fastboot"
+                                            Background="Transparent" Foreground="White" BorderThickness="0"
+                                            Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
+                                            FontFamily="Consolas" FontSize="11" Cursor="Hand"/>
+                                    <Button x:Name="ui_reboot_recovery" Content="&gt; Recovery"
+                                            Background="Transparent" Foreground="White" BorderThickness="0"
+                                            Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
+                                            FontFamily="Consolas" FontSize="11" Cursor="Hand"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
