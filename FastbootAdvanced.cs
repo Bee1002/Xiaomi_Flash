@@ -5,7 +5,7 @@ using Xiaomi_Flash.Ui;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// Acciones del menú ADVANCED (UI nueva). Reutiliza el runner fastboot legacy.
+    /// ADVANCED menu actions for the v2 UI. Reuses the legacy fastboot command runner.
     /// </summary>
     static class FastbootAdvanced
     {
@@ -33,8 +33,8 @@ namespace Xiaomi_Flash
                 return;
 
             MessageBoxResult confirm = MessageBox.Show(
-                "Se borrará la partición persist (EFS / radio).\n" +
-                "Puede perder señal, IMEI o datos de red.\n\n¿Continuar?",
+                "The persist partition (EFS / radio) will be erased.\n" +
+                "You may lose signal, IMEI, or network data.\n\nContinue?",
                 "Reset EFS",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -52,8 +52,8 @@ namespace Xiaomi_Flash
                 return;
 
             MessageBoxResult confirm = MessageBox.Show(
-                "Intento de recuperación: erase misc + reboot bootloader.\n" +
-                "No sustituye un flash completo si el equipo está brickeado.\n\n¿Continuar?",
+                "Recovery attempt: erase misc + reboot bootloader.\n" +
+                "This does not replace a full flash if the device is bricked.\n\nContinue?",
                 "Fix / Brick",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -94,8 +94,8 @@ namespace Xiaomi_Flash
             }
             else
             {
-                TerminalLog.Error("Slot A/B no disponible en este dispositivo");
-                MessageBox.Show("Este dispositivo no reporta slots A/B activos.");
+                TerminalLog.Error("Slot A/B not available on this device");
+                MessageBox.Show("This device does not report active A/B slots.");
                 return;
             }
 

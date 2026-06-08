@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace Xiaomi_Flash.Ui
 {
     /// <summary>
-    /// Actualiza el panel [ DEVICE CONNECTION ] de la UI nueva.
+    /// Updates the [ DEVICE CONNECTION ] panel in the v2 UI.
     /// </summary>
     internal static class DeviceConnectionUi
     {
@@ -76,9 +76,9 @@ namespace Xiaomi_Flash.Ui
             {
                 MainWindow.THIS.ui_device_details.Text =
                     FormatRow("Serial", null)
-                    + FormatRow("Modelo", null)
+                    + FormatRow("Model", null)
                     + FormatRow("Codename", null)
-                    + FormatRow("Almacenamiento", null)
+                    + FormatRow("Storage", null)
                     + FormatRow("CPU ID", null)
                     + FormatRow("HW revision", null)
                     + FormatRow("Secure boot", null)
@@ -91,9 +91,9 @@ namespace Xiaomi_Flash.Ui
 
             MainWindow.THIS.ui_device_details.Text =
                 FormatRow("Serial", snapshot.Serial)
-                + FormatRow("Modelo", snapshot.Model)
+                + FormatRow("Model", snapshot.Model)
                 + FormatRow("Codename", snapshot.Codename)
-                + FormatRow("Almacenamiento", snapshot.Storage)
+                + FormatRow("Storage", snapshot.Storage)
                 + FormatRow("CPU ID", snapshot.CpuId)
                 + FormatRow("HW revision", snapshot.HwRevision)
                 + FormatRow("Secure boot", snapshot.SecureBoot)

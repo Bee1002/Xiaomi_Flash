@@ -118,34 +118,34 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="about" xml:space="preserve">
-    <value>Acerca de</value>
+    <value>About</value>
   </data>
   <data name="app_name" xml:space="preserve">
     <value>Xiaomi Flash</value>
   </data>
   <data name="author" xml:space="preserve">
-    <value>Basado en FastbootEnhance por LibXZR</value>
+    <value>Xiaomi Flash Team</value>
   </data>
   <data name="disabled" xml:space="preserve">
-    <value>Desactivado</value>
+    <value>Disabled</value>
   </data>
   <data name="enabled" xml:space="preserve">
-    <value>Activado</value>
+    <value>Enabled</value>
   </data>
   <data name="error" xml:space="preserve">
     <value>Error</value>
   </data>
   <data name="fastboot_0_size" xml:space="preserve">
-    <value>Desconocido</value>
+    <value>Unknown</value>
   </data>
   <data name="fastboot_basic_prop" xml:space="preserve">
-    <value>Propiedades básicas</value>
+    <value>Basic properties</value>
   </data>
   <data name="fastboot_cancel_update" xml:space="preserve">
-    <value>Cancelar actualización pendiente</value>
+    <value>Cancel pending update</value>
   </data>
   <data name="fastboot_choose_device" xml:space="preserve">
-    <value>Doble clic para seleccionar el dispositivo:</value>
+    <value>Double-click to select device:</value>
   </data>
   <data name="fastboot_cow_exist_str0" xml:space="preserve">
     <value>Virtual A/B temporary partitions exist</value>
@@ -163,19 +163,19 @@
     <value>Create new logical partition</value>
   </data>
   <data name="fastboot_current_device" xml:space="preserve">
-    <value>Dispositivo actual: </value>
+    <value>Current device: </value>
   </data>
   <data name="fastboot_current_slot" xml:space="preserve">
-    <value>Slot actual</value>
+    <value>Current slot</value>
   </data>
   <data name="fastboot_device" xml:space="preserve">
-    <value>Dispositivo</value>
+    <value>Device</value>
   </data>
   <data name="fastboot_device_name" xml:space="preserve">
-    <value>Nombre del dispositivo</value>
+    <value>Device name</value>
   </data>
   <data name="fastboot_device_not_exist" xml:space="preserve">
-    <value>Target device is not exist</value>
+    <value>Target device does not exist.</value>
   </data>
   <data name="fastboot_enhance" xml:space="preserve">
     <value>Fastboot</value>
@@ -184,16 +184,16 @@
     <value>Expand logical partition</value>
   </data>
   <data name="fastboot_filter_by_partition_name" xml:space="preserve">
-    <value>Filtrar por nombre:</value>
+    <value>Filter by name:</value>
   </data>
   <data name="fastboot_flash_payload" xml:space="preserve">
-    <value>Flashear Payload.bin</value>
+    <value>Flash Payload.bin</value>
   </data>
   <data name="fastboot_ignore_unknown" xml:space="preserve">
-    <value>Ignorar particiones desconocidas</value>
+    <value>Ignore unknown partitions</value>
   </data>
   <data name="fastboot_is_userspace" xml:space="preserve">
-    <value>En Fastbootd</value>
+    <value>In Fastbootd</value>
   </data>
   <data name="fastboot_not_support_multiselect" xml:space="preserve">
     <value>This operation does not allow multiple partitions to be selected.</value>
@@ -202,37 +202,37 @@
     <value>This operation is only supported for logical partitions.</value>
   </data>
   <data name="fastboot_partition_action" xml:space="preserve">
-    <value>Acciones</value>
+    <value>Actions</value>
   </data>
   <data name="fastboot_partition_action_create" xml:space="preserve">
-    <value>Crear</value>
+    <value>Create</value>
   </data>
   <data name="fastboot_partition_action_delete" xml:space="preserve">
-    <value>Eliminar</value>
+    <value>Delete</value>
   </data>
   <data name="fastboot_partition_action_erase" xml:space="preserve">
-    <value>Borrar</value>
+    <value>Erase</value>
   </data>
   <data name="fastboot_partition_action_flash" xml:space="preserve">
-    <value>Flashear</value>
+    <value>Flash</value>
   </data>
   <data name="fastboot_partition_action_resize" xml:space="preserve">
-    <value>Redimensionar</value>
+    <value>Resize</value>
   </data>
   <data name="fastboot_partition_is_dynamic" xml:space="preserve">
-    <value>Es lógica</value>
+    <value>Is logical</value>
   </data>
   <data name="fastboot_partition_name" xml:space="preserve">
-    <value>Nombre</value>
+    <value>Name</value>
   </data>
   <data name="fastboot_partition_name_empty" xml:space="preserve">
     <value>Partition name is empty.</value>
   </data>
   <data name="fastboot_partition_size" xml:space="preserve">
-    <value>Tamaño</value>
+    <value>Size</value>
   </data>
   <data name="fastboot_partition_size_b" xml:space="preserve">
-    <value>Tamaño (B)</value>
+    <value>Size (B)</value>
   </data>
   <data name="fastboot_partition_size_empty" xml:space="preserve">
     <value>Partition size is empty.</value>
@@ -244,46 +244,46 @@
     <value>Unable to shrink a partition. You can delete and recreate it.</value>
   </data>
   <data name="fastboot_partition_table" xml:space="preserve">
-    <value>Particiones</value>
+    <value>Partitions</value>
   </data>
   <data name="fastboot_prop_name" xml:space="preserve">
-    <value>Nombre</value>
+    <value>Name</value>
   </data>
   <data name="fastboot_prop_value" xml:space="preserve">
-    <value>Valor</value>
+    <value>Value</value>
   </data>
   <data name="fastboot_reboot_bootloader" xml:space="preserve">
-    <value>Reiniciar a Bootloader</value>
+    <value>Reboot to Bootloader</value>
   </data>
   <data name="fastboot_reboot_fastbootd" xml:space="preserve">
-    <value>Reiniciar a Fastbootd</value>
+    <value>Reboot to Fastbootd</value>
   </data>
   <data name="fastboot_reboot_recovery" xml:space="preserve">
-    <value>Reiniciar a Recovery</value>
+    <value>Reboot to Recovery</value>
   </data>
   <data name="fastboot_reboot_system" xml:space="preserve">
-    <value>Reiniciar al sistema</value>
+    <value>Reboot to System</value>
   </data>
   <data name="fastboot_remove_device" xml:space="preserve">
-    <value>Desconectar</value>
+    <value>Disconnect</value>
   </data>
   <data name="fastboot_seamless_update" xml:space="preserve">
-    <value>Actualización seamless</value>
+    <value>Seamless update</value>
   </data>
   <data name="fastboot_secure_boot" xml:space="preserve">
     <value>Secure Boot</value>
   </data>
   <data name="fastboot_serial_num" xml:space="preserve">
-    <value>Número de serie</value>
+    <value>Serial number</value>
   </data>
   <data name="fastboot_setactive_a" xml:space="preserve">
-    <value>Activar slot A</value>
+    <value>Set active slot A</value>
   </data>
   <data name="fastboot_setactive_b" xml:space="preserve">
-    <value>Activar slot B</value>
+    <value>Set active slot B</value>
   </data>
   <data name="fastboot_show_logs" xml:space="preserve">
-    <value>Mostrar logs</value>
+    <value>Show logs</value>
   </data>
   <data name="fastboot_target_partition_not_selected" xml:space="preserve">
     <value>Target partition not yet selected.</value>
@@ -298,16 +298,16 @@
     <value>You may need to reboot to fastbootd mode.</value>
   </data>
   <data name="fastboot_update_status" xml:space="preserve">
-    <value>Estado de actualización</value>
+    <value>Update status</value>
   </data>
   <data name="fastboot_update_status_merging" xml:space="preserve">
-    <value>Fusionando</value>
+    <value>Merging</value>
   </data>
   <data name="fastboot_update_status_none" xml:space="preserve">
-    <value>Ninguno</value>
+    <value>None</value>
   </data>
   <data name="fastboot_update_status_snapshotted" xml:space="preserve">
-    <value>Snapshot creado</value>
+    <value>Snapshotted</value>
   </data>
   <data name="fastboot_vab_staging_str0" xml:space="preserve">
     <value>System update is in progress</value>
@@ -328,40 +328,40 @@
     <value>Disable verification</value>
   </data>
   <data name="logger" xml:space="preserve">
-    <value>Registro</value>
+    <value>Log</value>
   </data>
   <data name="no" xml:space="preserve">
     <value>No</value>
   </data>
   <data name="ok" xml:space="preserve">
-    <value>Aceptar</value>
+    <value>OK</value>
   </data>
   <data name="open_source" xml:space="preserve">
-    <value>Código fuente</value>
+    <value>Open source</value>
   </data>
   <data name="operation_completed" xml:space="preserve">
-    <value>Operación completada</value>
+    <value>Operation completed</value>
   </data>
   <data name="operation_not_supported" xml:space="preserve">
     <value>Operation is not supported.</value>
   </data>
   <data name="payload_basic_properties" xml:space="preserve">
-    <value>Propiedades básicas</value>
+    <value>Basic properties</value>
   </data>
   <data name="payload_blocksize" xml:space="preserve">
     <value>Blocksize</value>
   </data>
   <data name="payload_browse" xml:space="preserve">
-    <value>Examinar</value>
+    <value>Browse</value>
   </data>
   <data name="payload_current_file" xml:space="preserve">
-    <value>Archivo actual: </value>
+    <value>Current file: </value>
   </data>
   <data name="payload_data_size" xml:space="preserve">
     <value>Data Blobs Size</value>
   </data>
   <data name="payload_dumper" xml:space="preserve">
-    <value>Extractor Payload</value>
+    <value>Payload Dumper</value>
   </data>
   <data name="payload_dynamic_partition_metadata" xml:space="preserve">
     <value>Dynamic Partition Metadata</value>
@@ -376,7 +376,7 @@
     <value>Ignore checksum</value>
   </data>
   <data name="payload_extract_image" xml:space="preserve">
-    <value>Extraer imagen</value>
+    <value>Extract image</value>
   </data>
   <data name="payload_extract_incremental" xml:space="preserve">
     <value>Allow incremental</value>
@@ -406,19 +406,19 @@
     <value>No payload has been specified, click the button browse, or drag in a file.</value>
   </data>
   <data name="payload_partitions" xml:space="preserve">
-    <value>Particiones</value>
+    <value>Partitions</value>
   </data>
   <data name="payload_partitions_filter_by_name" xml:space="preserve">
-    <value>Filtrar por nombre:</value>
+    <value>Filter by name:</value>
   </data>
   <data name="payload_partitions_hash" xml:space="preserve">
     <value>Checksum (Base64)</value>
   </data>
   <data name="payload_partitions_name" xml:space="preserve">
-    <value>Nombre</value>
+    <value>Name</value>
   </data>
   <data name="payload_partitions_size" xml:space="preserve">
-    <value>Tamaño</value>
+    <value>Size</value>
   </data>
   <data name="payload_partition_group_include" xml:space="preserve">
     <value>Partitions Included: </value>
@@ -430,13 +430,13 @@
     <value>Partition Group Size: </value>
   </data>
   <data name="payload_property_name" xml:space="preserve">
-    <value>Nombre</value>
+    <value>Name</value>
   </data>
   <data name="payload_property_value" xml:space="preserve">
-    <value>Valor</value>
+    <value>Value</value>
   </data>
   <data name="payload_remove_file" xml:space="preserve">
-    <value>Quitar</value>
+    <value>Remove</value>
   </data>
   <data name="payload_signature" xml:space="preserve">
     <value>Signatures (Base64)</value>
@@ -463,21 +463,21 @@
     <value>Payload Version</value>
   </data>
   <data name="program_already_running" xml:space="preserve">
-    <value>El programa ya está en ejecución</value>
+    <value>The application is already running.</value>
   </data>
   <data name="release_at" xml:space="preserve">
-    <value>Versión 2.0 — Proyecto Final Xiaomi Flash</value>
+    <value>Version 2.0.0 — Xiaomi Flash</value>
   </data>
   <data name="select_save_path" xml:space="preserve">
-    <value>Selecciona la ruta de guardado</value>
+    <value>Select save path</value>
   </data>
   <data name="unknown" xml:space="preserve">
-    <value>Desconocido</value>
+    <value>Unknown</value>
   </data>
   <data name="visit_thread" xml:space="preserve">
-    <value>Créditos originales</value>
+    <value>Repository</value>
   </data>
   <data name="yes" xml:space="preserve">
-    <value>Sí</value>
+    <value>Yes</value>
   </data>
 </root>

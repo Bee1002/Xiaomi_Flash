@@ -17,13 +17,13 @@ namespace Xiaomi_Flash.Ui
         {
             ("flash_all.bat", RomFlashMethod.ScriptFlashAll,
                 "flash_all.bat",
-                "Instalación limpia (borra datos)"),
+                "Clean install (wipes user data)"),
             ("flash_all_lock.bat", RomFlashMethod.ScriptFlashAllLock,
                 "flash_all_lock.bat",
-                "Instalación limpia + bloquear bootloader"),
+                "Clean install + lock bootloader"),
             ("flash_all_except_storage.bat", RomFlashMethod.ScriptFlashAllExceptStorage,
                 "flash_all_except_storage.bat",
-                "Actualización sin borrar almacenamiento interno")
+                "Update without wiping internal storage")
         };
 
         public static RomPackageInfo Resolve(string selectedPath)
@@ -40,7 +40,7 @@ namespace Xiaomi_Flash.Ui
                     Method = RomFlashMethod.Payload,
                     ScriptFileName = "payload.bin",
                     DisplayName = "payload.bin",
-                    Description = "ROM en formato payload (OTA)"
+                    Description = "OTA-style ROM (payload.bin)"
                 });
                 return info;
             }
@@ -66,8 +66,8 @@ namespace Xiaomi_Flash.Ui
                 {
                     Method = RomFlashMethod.ImagesOnly,
                     ScriptFileName = "",
-                    DisplayName = "Solo imágenes (*.img)",
-                    Description = "Modo manual: todas las .img en images\\ (sin script)"
+                    DisplayName = "Images only (*.img)",
+                    Description = "Manual mode: all .img files in images\\ (no script)"
                 });
             }
 

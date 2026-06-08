@@ -6,7 +6,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         d:DesignHeight="740" d:DesignWidth="1140"
-        Title="XIAOMI FASTBOOT FLASHER v2.1 [BETA]"
+        Title="XIAOMI FASTBOOT FLASHER v2.0.0"
         Icon="icon.ico"
         Height="740" Width="1140"
         MinHeight="660" MinWidth="1000"
@@ -76,7 +76,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ContentControl Content="{StaticResource XiaomiLogo}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <TextBlock Text="XIAOMI FASTBOOT FLASHER v2.1 [BETA]"
+                            <TextBlock Text="XIAOMI FASTBOOT FLASHER v2.0.0"
                                        FontFamily="Segoe UI" FontSize="12.5" FontWeight="SemiBold"
                                        Foreground="White" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -114,16 +114,16 @@
 
                             <ContentControl Grid.Row="0" Grid.Column="0"
                                             Content="{StaticResource DevicePhoneArt}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            HorizontalAlignment="Center" VerticalAlignment="Top"
                                             Margin="4,10,4,10"/>
 
-                            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Top" Margin="12,8,4,0">
+                            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Top" Margin="12,28,4,0">
                                 <TextBlock x:Name="ui_device_status" Margin="0,0,0,8" FontSize="11" FontWeight="Bold"
                                            Foreground="White" Text="STATUS: SCANNING..."/>
                                 <TextBlock x:Name="ui_device_port" Text="PORT:   [ — ]" Foreground="#888888" Margin="0,0,0,8"/>
                                 <TextBlock x:Name="ui_device_details" FontFamily="Consolas" FontSize="10.5"
                                            Foreground="#DDDDDD" LineHeight="17" Margin="0,0,8,4"
-                                           Text="Serial              —&#x0a;Modelo              —&#x0a;Codename            —&#x0a;Almacenamiento      —&#x0a;CPU ID              —&#x0a;HW revision         —&#x0a;Secure boot         —&#x0a;Bootloader          —&#x0a;Boot slot           —&#x0a;Anti-rollback       —&#x0a;Firmware            —"/>
+                                           Text="Serial              —&#x0a;Model               —&#x0a;Codename            —&#x0a;Storage             —&#x0a;CPU ID              —&#x0a;HW revision         —&#x0a;Secure boot         —&#x0a;Bootloader          —&#x0a;Boot slot           —&#x0a;Anti-rollback       —&#x0a;Firmware            —"/>
                             </StackPanel>
 
                             <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
@@ -132,13 +132,13 @@
                                 <StackPanel>
                                     <TextBlock Text="[ MAIN PROGRESS BAR ]" FontSize="10" Foreground="#888888" Margin="0,0,0,8"/>
                                     <TextBlock x:Name="ui_main_progress_text" FontSize="11"
-                                               Text="OVERALL FLASH PROGRESS  [=============================&gt;------] 85%"/>
-                                    <ProgressBar x:Name="ui_main_progress_bar" Value="85" Maximum="100"
+                                               Text="OVERALL FLASH PROGRESS  [----------------------------------] 0%"/>
+                                    <ProgressBar x:Name="ui_main_progress_bar" Value="0" Maximum="100"
                                                  Style="{StaticResource FuturisticProgressBar}" Height="0"
                                                  Visibility="Collapsed" Margin="0,6,0,0"/>
                                     <TextBlock x:Name="ui_current_operation" FontSize="10.5" Foreground="#9A9A9A"
                                                Margin="0,8,0,0"
-                                               Text="Current Operation: Flashing 'system.img' (2.1GB / 4.5GB)"/>
+                                               Text="Current Operation: Idle"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -174,7 +174,9 @@
                                         <TextBlock Grid.Column="3" Foreground="#888888" FontSize="10" Text="[ Status ]"/>
                                         <TextBlock Grid.Column="4" Foreground="#888888" FontSize="10" Text="[ Progress ]"/>
                                     </Grid>
-                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <ScrollViewer x:Name="ui_partition_scroll" Grid.Row="1"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
                                         <ItemsControl x:Name="ui_partition_table">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -211,12 +213,12 @@
                                 <Button x:Name="ui_advanced" Content="[ ADVANCED ]  ∨"
                                         Style="{StaticResource FuturisticButton}" Padding="12,9"
                                         Margin="0,0,8,0" Click="AdvancedButton_Click"/>
-                                <Button x:Name="ui_load_firmware" Content="[ CARGAR FIRMWARE ]"
+                                <Button x:Name="ui_load_firmware" Content="[ LOAD FIRMWARE ]"
                                         Style="{StaticResource FuturisticButton}" Padding="14,9"
                                         Margin="0,0,8,0"/>
                                 <Button x:Name="ui_start_flashing" Content="[ START ]"
                                         Style="{StaticResource FuturisticButton}" Padding="14,9"
-                                        Margin="0,0,8,0" Background="#111115" IsEnabled="False"/>
+                                        Margin="0,0,8,0" IsEnabled="False"/>
                                 <Button x:Name="ui_stop_flashing" Content="[ STOP ]"
                                         Style="{StaticResource FuturisticButton}" Padding="14,9"
                                         Margin="0,0,8,0" IsEnabled="False" MinWidth="110"/>
@@ -225,7 +227,7 @@
                                         MinWidth="120" IsEnabled="False" Click="RebootButton_Click"/>
                             </StackPanel>
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="Modo:" VerticalAlignment="Center" Foreground="#888888"
+                                <TextBlock Text="Mode:" VerticalAlignment="Center" Foreground="#888888"
                                            FontFamily="Consolas" FontSize="10.5" Margin="0,0,8,0"/>
                                 <ComboBox x:Name="ui_flash_method" MinWidth="320" MaxWidth="420"
                                           IsEnabled="False" Style="{StaticResource FuturisticComboBox}"
@@ -240,7 +242,7 @@
                                 <TextBlock x:Name="ui_autoreboot_note" VerticalAlignment="Center"
                                            Foreground="#666666" FontFamily="Consolas" FontSize="10"
                                            Visibility="Collapsed"
-                                           Text="(reboot incluido en el script)"/>
+                                           Text="(reboot included in script)"/>
                             </StackPanel>
                             <Border Grid.Row="3" x:Name="ui_advanced_menu" BorderBrush="White" BorderThickness="1"
                                     Background="#000000" Margin="0,6,0,0" Padding="10,8"
@@ -308,11 +310,28 @@
                     </GroupBox>
                 </Grid>
 
+                <!--
+                  LEGACY UI HOST (hidden, not removed)
+                  This block keeps the original full-featured fastboot/payload controls alive so their
+                  code-behind (FastbootUI.init, PayloadUI.init) can still wire events and run
+                  fastboot/payload logic. It is intentionally NOT shown in the v2 UI.
+
+                  To expose a feature in the new interface later:
+                    1. Reuse the existing handlers in FastbootUI.cs / PayloadUI.cs / FastbootAdvanced.cs
+                    2. Add a visible button or panel in the main grid above — do not delete these hosts.
+
+                  Sections below:
+                    • fastboot_devices_page  — multi-device picker (double-click to select serial)
+                    • fastboot_actions_page  — manual partition flash/erase + logical partition ops
+                    • payload_before_load / payload_after_load — standalone Payload.bin dumper/extractor
+                -->
                 <Grid Grid.Row="0" Grid.RowSpan="2" Visibility="Collapsed" Width="0" Height="0" IsHitTestVisible="False">
+                    <!-- Multi-device selector: list of connected fastboot devices; double-click picks cur_serial -->
                     <Grid x:Name="fastboot_devices_page" Visibility="Hidden">
                         <ListView x:Name="fastboot_devices_list"/>
                         <Label Content="hidden"/>
                     </Grid>
+                    <!-- Fastboot explorer: getvar list, partition table, per-partition flash/erase, logical create/delete/resize -->
                     <Grid x:Name="fastboot_actions_page" Visibility="Visible">
                         <ListView x:Name="fastboot_info_list"/>
                         <TextBox x:Name="fastboot_partition_name_textbox"/>
@@ -331,7 +350,7 @@
                         <ProgressBar x:Name="fastboot_progress_bar" Visibility="Hidden"/>
                         <Grid x:Name="fastboot_action_bar" Visibility="Visible">
                             <Button x:Name="fastboot_reboot_d" Content="Reboot to Bootloader"/>
-                            <Button x:Name="fastboot_ab_switch" Content="切换分区"/>
+                            <Button x:Name="fastboot_ab_switch" Content="Switch slot A/B"/>
                             <Button x:Name="fastboot_flash_payload"/>
                             <Button x:Name="fastboot_cancel_update"/>
                             <Label x:Name="fastboot_cur_device"/>
@@ -340,6 +359,7 @@
                             <Button x:Name="fastboot_reboot_recovery"/>
                         </Grid>
                     </Grid>
+                    <!-- Payload Dumper: browse/open payload.bin, view manifest, extract partition images to disk -->
                     <Grid x:Name="payload_before_load" Visibility="Hidden">
                         <ProgressBar x:Name="payload_opening" Visibility="Hidden"/>
                         <Button x:Name="payload_load_btn"/>

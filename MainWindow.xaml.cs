@@ -9,10 +9,12 @@ using Xiaomi_Flash.Ui;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// MainWindow.xaml 的交互逻辑
+    /// Main window code-behind for the v2 fastboot flasher UI.
     /// </summary>
     public partial class MainWindow : Window
     {
+        const string ProjectRepositoryUrl = "https://github.com/Bee1002/Xiaomi_Flash";
+
         public static MainWindow THIS = null!;
 
         public MainWindow()
@@ -70,12 +72,17 @@ namespace Xiaomi_Flash
 
         private void Credits_Click(object sender, RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://github.com/libxzr/FastbootEnhance") { UseShellExecute = true });
+            OpenProjectRepository();
         }
 
         private void OSS_Click(object sender, RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://github.com/libxzr/FastbootEnhance") { UseShellExecute = true });
+            OpenProjectRepository();
+        }
+
+        static void OpenProjectRepository()
+        {
+            Process.Start(new ProcessStartInfo(ProjectRepositoryUrl) { UseShellExecute = true });
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -129,6 +136,16 @@ namespace Xiaomi_Flash
                 ui_terminal_log.Clear();
                 TerminalLog.Reset();
             }
+
+            if (ui_main_progress_text != null)
+                ui_main_progress_text.Text = "OVERALL FLASH PROGRESS  [----------------------------------] 0%";
+            if (ui_main_progress_bar != null)
+            {
+                ui_main_progress_bar.Value = 0;
+                ui_main_progress_bar.IsIndeterminate = false;
+            }
+            if (ui_current_operation != null)
+                ui_current_operation.Text = "Current Operation: Idle";
         }
     }
 }

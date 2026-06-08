@@ -64,7 +64,7 @@ namespace Xiaomi_Flash
 
                 if (lastTerminalLoggedSerial != null)
                 {
-                    TerminalLog.Info("Dispositivo: desconectado");
+                    TerminalLog.Info("Device: disconnected");
                     lastTerminalLoggedSerial = null;
                 }
 
@@ -105,7 +105,7 @@ namespace Xiaomi_Flash
             {
                 if (lastTerminalLoggedSerial != null)
                 {
-                    TerminalLog.Info("Dispositivo: desconectado");
+                    TerminalLog.Info("Device: disconnected");
                     lastTerminalLoggedSerial = null;
                 }
 
@@ -118,7 +118,7 @@ namespace Xiaomi_Flash
             if (lastTerminalLoggedSerial != fbDevice.serial)
             {
                 lastTerminalLoggedSerial = fbDevice.serial;
-                TerminalLog.Info("Dispositivo: conectado");
+                TerminalLog.Info("Device: connected");
             }
 
             bool fastbootd = fbDevice.name.Equals("fastbootd", StringComparison.OrdinalIgnoreCase);

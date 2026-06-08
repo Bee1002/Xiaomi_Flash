@@ -13,7 +13,7 @@
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
     <Authors>Xiaomi_Flash Team</Authors>
-    <Description>Herramienta Fastboot y Payload Dumper para dispositivos Xiaomi</Description>
+    <Description>Fastboot flasher for Xiaomi devices</Description>
     <Platforms>x86</Platforms>
     <PlatformTarget>x86</PlatformTarget>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>

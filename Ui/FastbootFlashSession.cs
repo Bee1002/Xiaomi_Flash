@@ -150,10 +150,10 @@ namespace Xiaomi_Flash.Ui
                 if (package.Methods.Count == 0)
                 {
                     MessageBox.Show(
-                        "No se encontró un paquete ROM válido.\n\n" +
-                        "Selecciona la carpeta raíz de la ROM (con flash_all.bat, flash_all_lock.bat o payload.bin).\n" +
-                        "Si solo tienes imágenes sueltas, deben estar en una subcarpeta images\\.",
-                        "CARGAR FIRMWARE",
+                        "No valid ROM package found.\n\n" +
+                        "Select the ROM root folder (containing flash_all.bat, flash_all_lock.bat, or payload.bin).\n" +
+                        "If you only have loose images, place them in an images\\ subfolder.",
+                        "LOAD FIRMWARE",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
@@ -163,7 +163,7 @@ namespace Xiaomi_Flash.Ui
                 loadedRomRoot = package.RomRoot;
 
                 if (!selectedPath.Equals(package.RomRoot, StringComparison.OrdinalIgnoreCase))
-                    TerminalLog.Info("ROM detectada en: " + package.RomRoot);
+                    TerminalLog.Info("ROM detected at: " + package.RomRoot);
 
                 PopulateFlashMethods(package);
                 ApplySelectedFlashMethod();
@@ -219,8 +219,8 @@ namespace Xiaomi_Flash.Ui
             if (plan.Kind == RomFlashKind.None || plan.Steps.Count == 0)
             {
                 MessageBox.Show(
-                    "No se pudieron leer operaciones para: " + option.DisplayName,
-                    "CARGAR FIRMWARE",
+                    "Could not read flash steps for: " + option.DisplayName,
+                    "LOAD FIRMWARE",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -230,7 +230,7 @@ namespace Xiaomi_Flash.Ui
             BuildPartitionTable(plan);
             ResetRowsForFlash();
             UpdateAutoRebootOptionUi(plan);
-            TerminalLog.Line("Firmware cargado [" + option.DisplayName + "]: " + plan.Steps.Count + " paso(s)");
+            TerminalLog.Line("Firmware loaded [" + option.DisplayName + "]: " + plan.Steps.Count + " step(s)");
             SetMainProgress(0, option.DisplayName + " — " + option.Description);
             UpdateButtonState();
         }
@@ -243,7 +243,7 @@ namespace Xiaomi_Flash.Ui
             if (!HasLoadedFirmware())
             {
                 MessageBox.Show(
-                    "Primero carga un firmware con [ CARGAR FIRMWARE ].",
+                    "Load firmware first with [ LOAD FIRMWARE ].",
                     "START",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -259,16 +259,16 @@ namespace Xiaomi_Flash.Ui
             rebootStepExecuted = false;
 
             string rebootLine = PlanIncludesReboot(loadedPlan)
-                ? "Auto reboot: incluido en el script"
-                : "Auto reboot: " + (sessionAutoReboot ? "Sí" : "No");
+                ? "Auto reboot: included in script"
+                : "Auto reboot: " + (sessionAutoReboot ? "Yes" : "No");
 
-            string optionsLine = "Modo: " + loadedPlan.ScriptFileName + "\n"
+            string optionsLine = "Mode: " + loadedPlan.ScriptFileName + "\n"
                 + loadedPlan.MethodDescription + "\n"
-                + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Sí" : "No") + "\n"
+                + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Yes" : "No") + "\n"
                 + rebootLine;
 
             MessageBoxResult confirm = MessageBox.Show(
-                $"¿Iniciar flash de {loadedPlan.Steps.Count} paso(s)?\n\n{loadedRomRoot}\n\n{optionsLine}",
+                $"Start flashing {loadedPlan.Steps.Count} step(s)?\n\n{loadedRomRoot}\n\n{optionsLine}",
                 "START",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -285,8 +285,8 @@ namespace Xiaomi_Flash.Ui
                 cancelRequested = false;
                 flashStartedAtUtc = DateTime.UtcNow;
                 UpdateButtonState();
-                TerminalLog.Action("Payload flash iniciado");
-                SetMainProgress(0, "Preparando payload...");
+                TerminalLog.Action("Payload flash started");
+                SetMainProgress(0, "Preparing payload...");
                 FastbootUI.RunPayloadFlash(loadedPlan.PayloadPath!, OnFlashFinished, sessionBypassAntiRb, loadedRomRoot);
                 return;
             }
@@ -309,6 +309,7 @@ namespace Xiaomi_Flash.Ui
             {
                 MainWindow.THIS.ui_partition_table.ItemsSource = null;
                 MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+                ScrollPartitionTableToTop();
             }));
         }
 
@@ -345,6 +346,7 @@ namespace Xiaomi_Flash.Ui
             {
                 MainWindow.THIS.ui_partition_table.ItemsSource = null;
                 MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+                ScrollPartitionTableToTop();
             });
         }
 
@@ -372,7 +374,7 @@ namespace Xiaomi_Flash.Ui
             flashStartedAtUtc = DateTime.UtcNow;
             UpdateButtonState();
             TerminalLog.Line("--- Flash started (" + steps.Count + " steps) ---");
-            SetMainProgress(0, "Iniciando flash...");
+            SetMainProgress(0, "Starting flash...");
 
             List<FlashScriptStep> queue = new List<FlashScriptStep>(steps);
             if (bypassAntiRb)
@@ -393,7 +395,7 @@ namespace Xiaomi_Flash.Ui
                         int antiRow = FindRowIndexByPartition("anti");
                         if (antiRow >= 0)
                             UpdateRow(antiRow, antiOk ? "[ OK ]" : "[ FAILED ]",
-                                antiOk ? "[##########] 100%" : "[##########] ERR");
+                                antiOk ? "[##########] 100%" : "[##########] ERR", true);
                         if (!antiOk)
                             allOk = false;
                     }
@@ -410,14 +412,14 @@ namespace Xiaomi_Flash.Ui
                         {
                             allOk = false;
                             if (rowIndex >= 0)
-                                UpdateRow(rowIndex, "[ CANCELLED ]", "[-----------] --");
+                                UpdateRow(rowIndex, "[ CANCELLED ]", "[-----------] --", true);
                             break;
                         }
 
                         if (step.Kind == FlashScriptStepKind.Reboot && !autoReboot)
                         {
                             if (rowIndex >= 0)
-                                UpdateRow(rowIndex, "[ SKIPPED ]", "[-----------] --");
+                                UpdateRow(rowIndex, "[ SKIPPED ]", "[-----------] --", true);
                             continue;
                         }
 
@@ -430,7 +432,8 @@ namespace Xiaomi_Flash.Ui
                         EndStepProgress();
                         TerminalLog.StepResult(FormatStepName(step), ok);
                         if (rowIndex >= 0)
-                            UpdateRow(rowIndex, ok ? "[ OK ]" : "[ FAILED ]", ok ? "[##########] 100%" : "[##########] ERR");
+                            UpdateRow(rowIndex, ok ? "[ OK ]" : "[ FAILED ]",
+                                ok ? "[##########] 100%" : "[##########] ERR", true);
                         if (!ok)
                             allOk = false;
                     }
@@ -488,7 +491,7 @@ namespace Xiaomi_Flash.Ui
             string antiImage = RomFlashScanner.FindAntiImage(romRoot);
             if (string.IsNullOrEmpty(antiImage) || !File.Exists(antiImage))
             {
-                TerminalLog.Error("Bypass anti_RB: no se encontró imagen anti en la ROM");
+                TerminalLog.Error("Bypass anti_RB: anti image not found in ROM");
                 return false;
             }
 
@@ -563,7 +566,7 @@ namespace Xiaomi_Flash.Ui
 
             MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
             {
-                SetMainProgress(success ? 100 : 0, success ? "Flash completado" : "Flash detenido o con errores");
+                SetMainProgress(success ? 100 : 0, success ? "Flash completed" : "Flash stopped or completed with errors");
                 if (success)
                 {
                     TerminalLog.FlashCompleted(elapsed);
@@ -590,10 +593,10 @@ namespace Xiaomi_Flash.Ui
             if (!flashing)
                 return;
             cancelRequested = true;
-            TerminalLog.Action("Deteniendo flash...");
+            TerminalLog.Action("Stopping flash...");
         }
 
-        static void UpdateRow(int index, string status, string progress)
+        static void UpdateRow(int index, string status, string progress, bool scrollAfterComplete = false)
         {
             if (index < 0 || index >= rows.Count)
                 return;
@@ -601,10 +604,56 @@ namespace Xiaomi_Flash.Ui
             rows[index].Status = status;
             rows[index].ProgressStr = progress;
 
+            if (scrollAfterComplete)
+                ScrollPartitionTableAfterRowCompleted(index);
+        }
+
+        const double PartitionRowScrollStep = 24;
+
+        static void ScrollPartitionTableAfterRowCompleted(int index)
+        {
+            if (index < 0 || index >= rows.Count)
+                return;
+
             MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
             {
-                MainWindow.THIS.ui_partition_table.ItemsSource = null;
-                MainWindow.THIS.ui_partition_table.ItemsSource = rows;
+                if (MainWindow.THIS?.ui_partition_scroll == null)
+                    return;
+
+                ScrollViewer scroll = MainWindow.THIS.ui_partition_scroll;
+                scroll.UpdateLayout();
+
+                double max = Math.Max(0, scroll.ExtentHeight - scroll.ViewportHeight);
+                double rowTop = index * PartitionRowScrollStep;
+                double rowBottom = rowTop + PartitionRowScrollStep;
+                double viewTop = scroll.VerticalOffset;
+                double viewBottom = viewTop + scroll.ViewportHeight;
+
+                if (rowBottom > viewBottom)
+                {
+                    double target = rowBottom - scroll.ViewportHeight * 0.4;
+                    scroll.ScrollToVerticalOffset(Math.Clamp(target, 0, max));
+                }
+                else if (rowTop < viewTop)
+                {
+                    scroll.ScrollToVerticalOffset(rowTop);
+                }
+                else if (index + 1 < rows.Count)
+                {
+                    double nextRowBottom = (index + 2) * PartitionRowScrollStep;
+                    if (nextRowBottom > viewBottom)
+                        scroll.ScrollToVerticalOffset(Math.Min(scroll.VerticalOffset + PartitionRowScrollStep, max));
+                }
+            }), DispatcherPriority.Loaded);
+        }
+
+        static void ScrollPartitionTableToTop()
+        {
+            MainWindow.THIS?.Dispatcher.BeginInvoke(new Action(delegate
+            {
+                if (MainWindow.THIS?.ui_partition_scroll == null)
+                    return;
+                MainWindow.THIS.ui_partition_scroll.ScrollToVerticalOffset(0);
             }));
         }
 
