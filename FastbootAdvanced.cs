@@ -5,7 +5,7 @@ using Xiaomi_Flash.Ui;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// ADVANCED menu actions for the v2 UI. Reuses the legacy fastboot command runner.
+    /// Acciones del menú ADVANCED en la UI v2. Reutiliza el ejecutor de comandos fastboot legacy.
     /// </summary>
     static class FastbootAdvanced
     {

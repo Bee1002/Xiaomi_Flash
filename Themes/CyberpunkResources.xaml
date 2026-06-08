@@ -11,6 +11,7 @@
 
     <FontFamily x:Key="CpFont">Consolas</FontFamily>
     <FontFamily x:Key="CpUiFont">Segoe UI</FontFamily>
+    <FontFamily x:Key="CpPixelFont">pack://application:,,,/Xiaomi_Flash;component/Fonts/#Press Start 2P</FontFamily>
 
     <!-- Ranuras de ventilación (rejilla bajo info del dispositivo) -->
     <VisualBrush x:Key="TechGridPattern" TileMode="Tile" Viewport="0,0,6,4" ViewportUnits="Absolute">
@@ -297,7 +298,7 @@
         </Setter>
     </Style>
 
-    <!-- READ DEVICE INFO - doble borde biselado -->
+    <!-- LEER INFO DISPOSITIVO - doble borde biselado -->
     <Style x:Key="CpReadInfoButton" TargetType="Button">
         <Setter Property="FontFamily" Value="{StaticResource CpFont}"/>
         <Setter Property="FontSize" Value="11"/>
@@ -337,7 +338,7 @@
         </Grid>
     </Viewbox>
 
-    <!-- Teléfono HUD + cable USB recto (sin imágenes externas) -->
+    <!-- Arte estático legacy del teléfono (reemplazado por Ui/DevicePhoneArtControl.xaml para animación del cable). -->
     <Grid x:Key="DevicePhoneArt" Width="142" Height="258">
         <Grid.RowDefinitions>
             <RowDefinition Height="220"/>

@@ -1,6 +1,6 @@
 # Xiaomi Flash
 
-Fastboot flasher for Xiaomi devices. Version **2.0.0** is the first full UI redesign focused on a guided ROM flash workflow.
+Fastboot flasher for Xiaomi devices. Version **2.0.1 By Xploit** — UI redesign focused on a guided ROM flash workflow.
 
 **Repository:** [github.com/Bee1002/Xiaomi_Flash](https://github.com/Bee1002/Xiaomi_Flash)
 
@@ -27,7 +27,7 @@ See the `LEGACY UI HOST` comment block in `MainWindow.xaml` for integration note
 
 ## Requirements
 
-- Windows 10/11 (x86 build)
+- Windows 10/11 (x86 or x64 build)
 - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
 - Xiaomi USB drivers (device in fastboot mode)
 - Unlocked bootloader (for most flash operations)
@@ -118,13 +118,25 @@ Example (after adding images):
 
 ## Build
 
+**x86** (default, runs on 64-bit Windows via WOW64):
+
 ```bash
 dotnet build -c Release -p:Platform=x86
 ```
 
-Output: `bin\Release\net8.0-windows\Xiaomi_Flash.exe`
+Output: `bin\x86\Release\net8.0-windows\Xiaomi_Flash.exe`
+
+**x64** (native 64-bit process, recommended on modern PCs):
+
+```bash
+dotnet build -c Release -p:Platform=x64
+```
+
+Output: `bin\x64\Release\net8.0-windows\Xiaomi_Flash.exe`
 
 No external NuGet restore is required; dependencies are bundled in the repository.
+
+`fastboot.exe` is always the bundled **x86** binary (launched as a child process). Only the in-process LZMA library differs: `liblzma.dll` (x86 builds) or `liblzma64.dll` (x64 builds).
 
 ### Visual Studio (XAML designer)
 
@@ -136,29 +148,68 @@ If the designer shows *"Could not load file or assembly Xiaomi_Flash"*:
 
 ## Distribution (publish)
 
-### Framework-dependent (smaller, requires .NET 8 Runtime on the PC)
+Publish profiles live in `Properties/PublishProfiles/`. They only apply to `dotnet publish`, not to normal Debug/Release builds.
+
+### Recommended: publish profiles
+
+**Framework-dependent** (smaller folder, ~5–15 MB; requires [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) on the target PC):
+
+```bash
+dotnet publish -p:PublishProfile=FrameworkDependent
+```
+
+Output: `publish\framework-dependent\`
+
+**Self-contained x86** (larger folder, ~70–90 MB; no separate .NET install):
+
+```bash
+dotnet publish -p:PublishProfile=SelfContained-win-x86
+```
+
+Output: `publish\self-contained\`
+
+**Framework-dependent x64** (smaller; 64-bit app; requires .NET 8 Runtime):
+
+```bash
+dotnet publish -p:PublishProfile=FrameworkDependent-x64
+```
+
+Output: `publish\framework-dependent-x64\`
+
+**Self-contained x64** (best default for end users on 64-bit Windows):
+
+```bash
+dotnet publish -p:PublishProfile=SelfContained-win-x64
+```
+
+Output: `publish\self-contained-x64\`
+
+In Visual Studio: right-click the project → **Publish** → pick the profile (set **Platform** to `x86` or `x64` to match).
+
+### Manual commands (equivalent)
 
 ```bash
 dotnet publish -c Release -p:Platform=x86 -o publish\framework-dependent
-```
-
-Copy the entire `publish\framework-dependent\` folder. The user must have .NET 8 Desktop Runtime installed.
-
-### Self-contained (larger, no separate runtime install)
-
-```bash
 dotnet publish -c Release -p:Platform=x86 -r win-x86 --self-contained true -o publish\self-contained
+dotnet publish -c Release -p:Platform=x64 -o publish\framework-dependent-x64
+dotnet publish -c Release -p:Platform=x64 -r win-x64 --self-contained true -o publish\self-contained-x64
 ```
 
-The published folder must include (copied automatically by the project):
+### What to ship
+
+Zip the entire output folder. It must include (copied automatically by the project):
 
 - `Xiaomi_Flash.exe`
-- `fastboot.exe`, `AdbWinApi.dll`, `AdbWinUsbApi.dll`
-- `liblzma.dll`, `liblzma64.dll`
+- `fastboot.exe`, `AdbWinApi.dll`, `AdbWinUsbApi.dll` (x86 platform-tools, all builds)
+- `liblzma.dll` (x86 builds only) **or** `liblzma64.dll` (x64 builds only)
 - `Google.Protobuf.dll`
 - `Data\xiaomi_codenames.json`
 
-Zip the output folder for distribution.
+Self-contained builds also bundle the .NET 8 runtime DLLs next to the executable.
+
+**Target PCs:** Windows 10/11. Use **x64 self-contained** on most modern PCs; use **x86** if you need compatibility with 32-bit Windows (rare). Xiaomi USB drivers and an unlocked bootloader are still required regardless of publish mode.
+
+**Note:** Single-file publish is intentionally disabled — `fastboot.exe` and native DLLs must stay beside `Xiaomi_Flash.exe`.
 
 ## Dependencies (no NuGet)
 
@@ -166,7 +217,7 @@ Zip the output folder for distribution.
 |-----------|----------------|
 | ZIP (ROM `.zip`) | `System.IO.Compression` (.NET 8) |
 | BZip2 (`ReplaceBz`) | `ThirdParty/BZip2/` (MIT, DotNetZip-derived) |
-| XZ/LZMA (`ReplaceXz`) | P/Invoke to `liblzma.dll` (`ThirdParty/Lzma/`) |
+| XZ/LZMA (`ReplaceXz`) | P/Invoke to `liblzma.dll` / `liblzma64.dll` (`ThirdParty/Lzma/`) |
 | Protobuf (payload manifest) | `lib/Google.Protobuf.dll` v3.28.3 (local reference) |
 | Fastboot | Bundled `fastboot.exe` + ADB USB DLLs |
 

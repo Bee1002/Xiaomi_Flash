@@ -1,0 +1,95 @@
+<Window x:Class="Xiaomi_Flash.Ui.FlashConfirmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="START"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="#000000"
+        Foreground="White"
+        SizeToContent="WidthAndHeight"
+        MinWidth="440"
+        MaxWidth="520"
+        KeyDown="Window_KeyDown">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xiaomi_Flash;component/Themes/CyberpunkResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border BorderBrush="White" BorderThickness="1" Background="#000000" Padding="22,18">
+        <Grid>
+            <Path Stroke="White" StrokeThickness="1" HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Data="M 0,10 L 0,0 L 10,0" IsHitTestVisible="False" Opacity="0.7"/>
+            <Path Stroke="White" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Data="M 0,10 L 10,10 L 10,0" IsHitTestVisible="False" Opacity="0.7"/>
+
+            <StackPanel>
+                <TextBlock Text="[ START ]"
+                           FontFamily="{StaticResource CpPixelFont}"
+                           FontSize="11"
+                           Margin="0,0,0,14"/>
+
+                <TextBlock x:Name="ui_headline"
+                           FontFamily="{StaticResource CpPixelFont}"
+                           FontSize="8"
+                           TextWrapping="Wrap"
+                           LineHeight="16"
+                           Margin="0,0,0,16"/>
+
+                <Border BorderBrush="#44FFFFFF" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="[ ROM PATH ]"
+                                   FontFamily="{StaticResource CpPixelFont}"
+                                   FontSize="7"
+                                   Foreground="#888888"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock x:Name="ui_rom_path"
+                                   FontFamily="{StaticResource CpFont}"
+                                   FontSize="10.5"
+                                   TextWrapping="Wrap"
+                                   Foreground="#CCCCCC"
+                                   Margin="0,0,0,12"/>
+
+                        <TextBlock Text="[ OPTIONS ]"
+                                   FontFamily="{StaticResource CpPixelFont}"
+                                   FontSize="7"
+                                   Foreground="#888888"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock x:Name="ui_options"
+                                   FontFamily="{StaticResource CpFont}"
+                                   FontSize="10.5"
+                                   TextWrapping="Wrap"
+                                   LineHeight="16"
+                                   Foreground="#CCCCCC"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button x:Name="ui_no" Content="[ NO ]"
+                            Style="{StaticResource FuturisticButton}"
+                            FontFamily="{StaticResource CpPixelFont}"
+                            FontSize="8"
+                            Padding="16,10"
+                            Margin="0,0,10,0"
+                            Click="NoButton_Click"
+                            IsCancel="True"/>
+                    <Button x:Name="ui_yes" Content="[ YES ]"
+                            Style="{StaticResource FuturisticButton}"
+                            FontFamily="{StaticResource CpPixelFont}"
+                            FontSize="8"
+                            Padding="16,10"
+                            Click="YesButton_Click"
+                            IsDefault="True"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

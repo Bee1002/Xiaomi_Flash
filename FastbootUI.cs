@@ -336,7 +336,7 @@ namespace Xiaomi_Flash
 
         static void load_fastboot_vars()
         {
-            //reset
+            // Reiniciar estado antes de cargar variables fastboot
             fastbootData = null;
             listHelper.clear();
             MainWindow.THIS.fastboot_partition_name_textbox.Text = "";
@@ -362,7 +362,7 @@ namespace Xiaomi_Flash
                     {
                         using (Fastboot fastboot = new Fastboot(cur_serial, "getvar all"))
                         {
-                            // fastboot bug: Must read stderr first or stdout would be blocked
+                            // Bug de fastboot: hay que leer stderr primero o stdout se bloquea
                             fastbootData = new FastbootData(fastboot.stderr.ReadToEnd());
                         }
                     }
@@ -374,7 +374,7 @@ namespace Xiaomi_Flash
 
                 MainWindow.THIS.Dispatcher.Invoke(delegate
                 {
-                    //Partition list init
+                    // Inicializar lista de particiones
 
                     foreach (string key in fastbootData.partition_size.Keys)
                     {
@@ -387,7 +387,7 @@ namespace Xiaomi_Flash
                     }
                     listHelper.render();
 
-                    //info list init
+                    // Inicializar lista de propiedades del dispositivo
 
                     MainWindow.THIS.fastboot_info_list.Items.Add(new fastboot_info_row(Properties.Resources.fastboot_device, fastbootData.product));
 
@@ -425,7 +425,7 @@ namespace Xiaomi_Flash
                         MainWindow.THIS.fastboot_info_list.Items.Add(new fastboot_info_row(Properties.Resources.fastboot_update_status,
                             vab_status_str));
 
-                    //buttons init
+                    // Inicializar botones según capacidades del dispositivo
 
                     MainWindow.THIS.fastboot_logical_create.IsEnabled = fastbootData.fastbootd;
                     MainWindow.THIS.fastboot_reboot_d.Content = fastbootData.fastbootd ?
@@ -447,7 +447,7 @@ namespace Xiaomi_Flash
                         MainWindow.THIS.fastboot_ab_switch.Visibility = Visibility.Hidden;
                     }
 
-                    //检测是否应出现"去除更新状态"按钮
+                    // Comprobar si debe mostrarse el botón "Cancelar actualización pendiente"
                     if (fastbootData.snapshot_update_status == "none")
                     {
                         MainWindow.THIS.fastboot_cancel_update.Visibility = Visibility.Hidden;
@@ -565,7 +565,7 @@ namespace Xiaomi_Flash
             fastboot_devices_row row = findFirstFastbootDevice();
             if (row == null)
             {
-                TerminalLog.Error("No hay dispositivo en fastboot");
+                TerminalLog.Error("No fastboot device detected");
                 MessageBox.Show(Properties.Resources.fastboot_device_not_exist);
                 return false;
             }
@@ -751,7 +751,7 @@ namespace Xiaomi_Flash
                 }
             };
 
-            //监听"去除更新状态"按钮
+            // Escuchar clic del botón "Cancelar actualización pendiente"
             MainWindow.THIS.fastboot_cancel_update.Click += delegate
             {
                 if (!checkCurDevExist())
@@ -936,7 +936,7 @@ namespace Xiaomi_Flash
                             return;
                         }
 
-                        //Ensure that all partitions are there
+                        // Comprobar que todas las particiones del payload existen en el dispositivo
                         string unknown_partition_list = "";
                         foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
                         {
@@ -1118,7 +1118,7 @@ namespace Xiaomi_Flash
                 }
 
                 Directory.CreateDirectory(PAYLOAD_TMP);
-                TerminalLog.Action("Payload flash: " + payload.manifest.Partitions.Count + " particiones");
+                TerminalLog.Action("Payload flash: " + payload.manifest.Partitions.Count + " partitions");
 
                 new Thread(new ThreadStart(delegate
                 {

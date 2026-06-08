@@ -4,7 +4,7 @@ using System.Windows;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// Fastboot_create_resize.xaml 的交互逻辑
+    /// Lógica de FastbootActionWindow: crear o redimensionar particiones lógicas (UI legacy).
     /// </summary>
     public partial class FastbootActionWindow : Window
     {

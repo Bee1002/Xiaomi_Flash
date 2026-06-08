@@ -4,7 +4,7 @@ using System.Windows;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// Logger.xaml 的交互逻辑
+    /// Lógica de interacción de Logger.xaml (ventana de log legacy, oculta en la UI v2).
     /// </summary>
     public partial class Logger : Window
     {

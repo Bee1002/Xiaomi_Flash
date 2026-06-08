@@ -56,7 +56,12 @@ namespace Xiaomi_Flash.Compression
 
     internal static class LzmaNative
     {
+        // DLL nativa en-proceso: liblzma (x86) o liblzma64 (x64), según PLATFORM_X64 del .csproj.
+#if PLATFORM_X64
+        private const string LibraryName = "liblzma64";
+#else
         private const string LibraryName = "liblzma";
+#endif
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern LzmaResult lzma_auto_decoder(ref LzmaStream strm, ulong memlimit, uint flags);

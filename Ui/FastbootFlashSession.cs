@@ -267,13 +267,7 @@ namespace Xiaomi_Flash.Ui
                 + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Yes" : "No") + "\n"
                 + rebootLine;
 
-            MessageBoxResult confirm = MessageBox.Show(
-                $"Start flashing {loadedPlan.Steps.Count} step(s)?\n\n{loadedRomRoot}\n\n{optionsLine}",
-                "START",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (confirm != MessageBoxResult.Yes)
+            if (!FlashConfirmDialog.Show(loadedPlan.Steps.Count, loadedRomRoot, optionsLine))
                 return;
 
             ResetRowsForFlash();

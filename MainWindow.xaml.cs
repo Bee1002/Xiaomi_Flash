@@ -9,7 +9,7 @@ using Xiaomi_Flash.Ui;
 namespace Xiaomi_Flash
 {
     /// <summary>
-    /// Main window code-behind for the v2 fastboot flasher UI.
+    /// Code-behind de la ventana principal de la UI v2 del flasher fastboot.
     /// </summary>
     public partial class MainWindow : Window
     {

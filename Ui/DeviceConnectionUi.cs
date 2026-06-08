@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace Xiaomi_Flash.Ui
 {
     /// <summary>
-    /// Updates the [ DEVICE CONNECTION ] panel in the v2 UI.
+    /// Actualiza el panel [ DEVICE CONNECTION ] de la UI v2 (estado, puerto USB, hardware).
     /// </summary>
     internal static class DeviceConnectionUi
     {
@@ -16,6 +16,7 @@ namespace Xiaomi_Flash.Ui
                 SetStatus("SCANNING...", Brushes.White);
                 SetPort(null);
                 SetHardwareDetails(null);
+                SetCableVisual(false, animate: false);
             });
         }
 
@@ -26,6 +27,7 @@ namespace Xiaomi_Flash.Ui
                 SetStatus("NO DEVICE DETECTED", new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)));
                 SetPort(null);
                 SetHardwareDetails(null);
+                SetCableVisual(false, animate: true);
             });
         }
 
@@ -36,6 +38,7 @@ namespace Xiaomi_Flash.Ui
                 SetStatus(mode.ToUpperInvariant() + " (NOT FASTBOOT)", new SolidColorBrush(Color.FromRgb(0xCC, 0xAA, 0x44)));
                 SetPort(null);
                 SetHardwareDetails(null);
+                SetCableVisual(true, animate: true);
             });
         }
 
@@ -47,7 +50,13 @@ namespace Xiaomi_Flash.Ui
                 SetStatus(status, Brushes.White);
                 SetPort(snapshot?.Port);
                 SetHardwareDetails(snapshot);
+                SetCableVisual(true, animate: true);
             });
+        }
+
+        static void SetCableVisual(bool connected, bool animate)
+        {
+            MainWindow.THIS?.ui_device_phone_art?.SetCableConnected(connected, animate);
         }
 
         static void SetStatus(string value, Brush foreground)

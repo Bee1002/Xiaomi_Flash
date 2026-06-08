@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:ui="clr-namespace:Xiaomi_Flash.Ui"
         mc:Ignorable="d"
         d:DesignHeight="740" d:DesignWidth="1140"
-        Title="XIAOMI FASTBOOT FLASHER v2.0.0"
+        Title="XIAOMI FASTBOOT FLASHER v2.0.1 By Xploit"
         Icon="icon.ico"
         Height="740" Width="1140"
         MinHeight="660" MinWidth="1000"
@@ -76,7 +77,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ContentControl Content="{StaticResource XiaomiLogo}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <TextBlock Text="XIAOMI FASTBOOT FLASHER v2.0.0"
+                            <TextBlock Text="XIAOMI FASTBOOT FLASHER v2.0.1 By Xploit"
                                        FontFamily="Segoe UI" FontSize="12.5" FontWeight="SemiBold"
                                        Foreground="White" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -112,10 +113,9 @@
                                 <ColumnDefinition Width="3*"/>
                             </Grid.ColumnDefinitions>
 
-                            <ContentControl Grid.Row="0" Grid.Column="0"
-                                            Content="{StaticResource DevicePhoneArt}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Top"
-                                            Margin="4,10,4,10"/>
+                            <ui:DevicePhoneArtControl x:Name="ui_device_phone_art" Grid.Row="0" Grid.Column="0"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                      Margin="4,10,4,10"/>
 
                             <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Top" Margin="12,28,4,0">
                                 <TextBlock x:Name="ui_device_status" Margin="0,0,0,8" FontSize="11" FontWeight="Bold"
@@ -181,6 +181,17 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="0,4">
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="TextElement.Foreground" Value="White"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="[ PENDING ]">
+                                                                        <Setter Property="TextElement.Foreground"
+                                                                                Value="{StaticResource CpDimBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="44"/>
                                                             <ColumnDefinition Width="140"/>
@@ -311,27 +322,27 @@
                 </Grid>
 
                 <!--
-                  LEGACY UI HOST (hidden, not removed)
-                  This block keeps the original full-featured fastboot/payload controls alive so their
-                  code-behind (FastbootUI.init, PayloadUI.init) can still wire events and run
-                  fastboot/payload logic. It is intentionally NOT shown in the v2 UI.
+                  HOST UI LEGACY (oculto, no eliminado)
+                  Este bloque mantiene vivos los controles fastboot/payload del proyecto original para que
+                  su code-behind (FastbootUI.init, PayloadUI.init) siga enlazando eventos y ejecutando
+                  la lógica fastboot/payload. NO se muestra en la UI v2.
 
-                  To expose a feature in the new interface later:
-                    1. Reuse the existing handlers in FastbootUI.cs / PayloadUI.cs / FastbootAdvanced.cs
-                    2. Add a visible button or panel in the main grid above — do not delete these hosts.
+                  Para exponer una función en la interfaz nueva más adelante:
+                    1. Reutilizar los handlers existentes en FastbootUI.cs / PayloadUI.cs / FastbootAdvanced.cs
+                    2. Añadir un botón o panel visible en el grid principal de arriba — no borrar estos hosts.
 
-                  Sections below:
-                    • fastboot_devices_page  — multi-device picker (double-click to select serial)
-                    • fastboot_actions_page  — manual partition flash/erase + logical partition ops
-                    • payload_before_load / payload_after_load — standalone Payload.bin dumper/extractor
+                  Secciones incluidas:
+                    • fastboot_devices_page  — selector multi-dispositivo (doble clic para elegir serial)
+                    • fastboot_actions_page  — flash/erase manual + particiones lógicas
+                    • payload_before_load / payload_after_load — dumper/extractor standalone de Payload.bin
                 -->
                 <Grid Grid.Row="0" Grid.RowSpan="2" Visibility="Collapsed" Width="0" Height="0" IsHitTestVisible="False">
-                    <!-- Multi-device selector: list of connected fastboot devices; double-click picks cur_serial -->
+                    <!-- Selector multi-dispositivo: lista de fastboot conectados; doble clic elige cur_serial -->
                     <Grid x:Name="fastboot_devices_page" Visibility="Hidden">
                         <ListView x:Name="fastboot_devices_list"/>
                         <Label Content="hidden"/>
                     </Grid>
-                    <!-- Fastboot explorer: getvar list, partition table, per-partition flash/erase, logical create/delete/resize -->
+                    <!-- Explorador fastboot: getvar, tabla de particiones, flash/erase manual, lógicas create/delete/resize -->
                     <Grid x:Name="fastboot_actions_page" Visibility="Visible">
                         <ListView x:Name="fastboot_info_list"/>
                         <TextBox x:Name="fastboot_partition_name_textbox"/>
@@ -359,7 +370,7 @@
                             <Button x:Name="fastboot_reboot_recovery"/>
                         </Grid>
                     </Grid>
-                    <!-- Payload Dumper: browse/open payload.bin, view manifest, extract partition images to disk -->
+                    <!-- Payload Dumper: abrir payload.bin, ver manifiesto, extraer imágenes de partición a disco -->
                     <Grid x:Name="payload_before_load" Visibility="Hidden">
                         <ProgressBar x:Name="payload_opening" Visibility="Hidden"/>
                         <Button x:Name="payload_load_btn"/>
