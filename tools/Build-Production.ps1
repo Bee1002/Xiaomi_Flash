@@ -4,12 +4,14 @@
 #   powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip
 #   powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Installer
 #   powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Installer
+#   powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Obfuscate
 
 param(
     [ValidateSet('x64', 'x86')]
     [string]$Platform = 'x64',
     [switch]$Zip,
-    [switch]$Installer
+    [switch]$Installer,
+    [switch]$Obfuscate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,6 +40,13 @@ if (-not (Test-Path (Join-Path $publishPath $lzma))) {
 }
 
 Write-Host "OK publish: $publishPath" -ForegroundColor Green
+
+if ($Obfuscate) {
+    $obfScript = Join-Path $root 'tools\Obfuscate-Publish.ps1'
+    Write-Host "==> Obfuscating Xiaomi_Flash.dll (source code unchanged)" -ForegroundColor Cyan
+    & $obfScript -PublishDir $publishPath
+    if ($LASTEXITCODE -ne 0) { throw "Obfuscation failed." }
+}
 
 if ($Zip) {
     $zipDir = Join-Path $root 'publish\zip'

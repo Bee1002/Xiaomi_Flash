@@ -169,6 +169,9 @@ powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip
 
 # Publish + Windows installer (requires Inno Setup 6)
 powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Installer
+
+# Publish + obfuscate DLL + ZIP (recommended for public release)
+powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Obfuscate
 ```
 
 | Output | Path |
@@ -180,6 +183,31 @@ powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Instal
 Install [Inno Setup 6](https://jrsoftware.org/isdl.php) once to compile `tools\XiaomiFlash.iss`. The installer uses `PrivilegesRequired=lowest` (no admin) and defaults to `%LocalAppData%\Xiaomi Flash`.
 
 **Code signing (optional, recommended for wide release):** sign the setup `.exe` with an Authenticode certificate to reduce SmartScreen warnings.
+
+### Obfuscation (published DLL only)
+
+Your **Visual Studio source code is never modified**. Obfuscar runs **after** `dotnet publish` and replaces only `Xiaomi_Flash.dll` inside the publish folder.
+
+```powershell
+# One-shot: publish + obfuscate + zip
+powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Zip -Obfuscate
+
+# Or obfuscate an existing publish folder
+powershell -ExecutionPolicy Bypass -File tools\Obfuscate-Publish.ps1 -PublishDir publish\self-contained-x64
+```
+
+First time on a new machine: `dotnet tool restore` (uses `.config/dotnet-tools.json`).
+
+| What | Obfuscated? |
+|------|-------------|
+| `.cs` / `.xaml` in the repo | **No** — always readable in VS |
+| `Xiaomi_Flash.dll` in `publish\` | **Yes** — internal/private API, strings |
+| `Xiaomi_Flash.exe`, `fastboot.exe`, other DLLs | No |
+| Public UI types (`MainWindow`, controls) | Names kept (WPF-safe) |
+
+Config: `tools/obfuscar.xml`. Rename map for debugging crashes: `tools/obfuscar-mapping-last.txt` (do not ship to users).
+
+**Always re-test flash on a real device after obfuscation** before distributing.
 
 ### Manual publish profiles
 
