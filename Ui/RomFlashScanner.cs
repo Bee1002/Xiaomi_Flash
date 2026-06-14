@@ -21,6 +21,7 @@ namespace Xiaomi_Flash.Ui
         public string MethodDescription { get; set; } = "";
         public string? PayloadPath { get; set; }
         public List<FlashScriptStep> Steps { get; } = new List<FlashScriptStep>();
+        public List<string> SkippedSteps { get; } = new List<string>();
     }
 
     internal static class RomFlashScanner
@@ -58,7 +59,9 @@ namespace Xiaomi_Flash.Ui
                 string batPath = Path.Combine(package.RomRoot, methodOption.ScriptFileName);
                 if (File.Exists(batPath))
                 {
-                    plan.Steps.AddRange(RomBatScriptParser.Parse(batPath, package.RomRoot));
+                    List<string> skipped = new List<string>();
+                    plan.Steps.AddRange(RomBatScriptParser.Parse(batPath, package.RomRoot, skipped));
+                    plan.SkippedSteps.AddRange(skipped);
                     if (plan.Steps.Count > 0)
                         plan.Kind = RomFlashKind.Script;
                 }
@@ -98,6 +101,38 @@ namespace Xiaomi_Flash.Ui
                     ImagePath = file
                 });
             }
+        }
+
+        public static string? FindVbmetaImage(string? romRoot)
+        {
+            if (string.IsNullOrWhiteSpace(romRoot))
+                return null;
+
+            string imagesDir = RomPackageResolver.GetImagesDir(romRoot);
+            string direct = Path.Combine(imagesDir, "vbmeta.img");
+            if (File.Exists(direct))
+                return Path.GetFullPath(direct);
+
+            string[] files = Directory.GetFiles(imagesDir, "vbmeta*.img", SearchOption.TopDirectoryOnly);
+            if (files.Length > 0)
+                return Path.GetFullPath(files[0]);
+
+            foreach (string batName in new[] { "flash_all.bat", "flash_all_lock.bat", "flash_all_except_storage.bat" })
+            {
+                string batPath = Path.Combine(romRoot, batName);
+                if (!File.Exists(batPath))
+                    continue;
+
+                foreach (FlashScriptStep step in RomBatScriptParser.Parse(batPath, romRoot))
+                {
+                    if (step.Kind == FlashScriptStepKind.Flash
+                        && step.Partition.StartsWith("vbmeta", StringComparison.OrdinalIgnoreCase)
+                        && File.Exists(step.ImagePath))
+                        return step.ImagePath;
+                }
+            }
+
+            return null;
         }
 
         public static string FindAntiImage(string romRoot)

@@ -19,7 +19,13 @@ namespace Xiaomi_Flash.Ui
         static RomPackageInfo loadedPackage;
         static string loadedRomRoot = "";
         static string activeFlashSerial = "";
+
+        public static string LoadedRomRoot => loadedRomRoot;
+
+        public static bool IsFlashing => flashing;
+
         static bool sessionBypassAntiRb;
+        static bool sessionContinueOnAntiRbFail;
         static bool sessionAutoReboot;
         static bool rebootStepExecuted;
         static bool suppressMethodChange;
@@ -45,7 +51,25 @@ namespace Xiaomi_Flash.Ui
             if (MainWindow.THIS.ui_flash_method != null)
                 MainWindow.THIS.ui_flash_method.SelectionChanged += OnFlashMethodComboChanged;
 
+            if (MainWindow.THIS.ui_opt_bypass_anti_rb != null)
+            {
+                MainWindow.THIS.ui_opt_bypass_anti_rb.Checked += delegate { SyncAntiRbContinueOption(); };
+                MainWindow.THIS.ui_opt_bypass_anti_rb.Unchecked += delegate { SyncAntiRbContinueOption(); };
+            }
+
+            SyncAntiRbContinueOption();
             UpdateButtonState();
+        }
+
+        static void SyncAntiRbContinueOption()
+        {
+            if (MainWindow.THIS?.ui_opt_anti_rb_continue == null)
+                return;
+
+            bool bypass = MainWindow.THIS.ui_opt_bypass_anti_rb?.IsChecked == true;
+            MainWindow.THIS.ui_opt_anti_rb_continue.IsEnabled = bypass && !flashing;
+            if (!bypass)
+                MainWindow.THIS.ui_opt_anti_rb_continue.IsChecked = false;
         }
 
         static bool HasLoadedFirmware()
@@ -78,11 +102,25 @@ namespace Xiaomi_Flash.Ui
                 if (MainWindow.THIS.ui_opt_bypass_anti_rb != null)
                     MainWindow.THIS.ui_opt_bypass_anti_rb.IsEnabled = !flashing;
 
+                if (MainWindow.THIS.ui_opt_anti_rb_continue != null)
+                {
+                    bool bypass = MainWindow.THIS.ui_opt_bypass_anti_rb?.IsChecked == true;
+                    MainWindow.THIS.ui_opt_anti_rb_continue.IsEnabled = bypass && !flashing;
+                    if (!bypass)
+                        MainWindow.THIS.ui_opt_anti_rb_continue.IsChecked = false;
+                }
+
                 if (MainWindow.THIS.ui_opt_autoreboot != null)
                     MainWindow.THIS.ui_opt_autoreboot.IsEnabled = !flashing;
 
                 if (MainWindow.THIS.ui_flash_method != null)
                     MainWindow.THIS.ui_flash_method.IsEnabled = !flashing && loadedPackage != null;
+
+                if (MainWindow.THIS.ui_advanced != null)
+                    MainWindow.THIS.ui_advanced.IsEnabled = deviceReady && !flashing;
+
+                if (flashing && MainWindow.THIS.ui_advanced_menu != null)
+                    MainWindow.THIS.ui_advanced_menu.Visibility = Visibility.Collapsed;
             }));
         }
 
@@ -91,6 +129,15 @@ namespace Xiaomi_Flash.Ui
             if (MainWindow.THIS?.ui_opt_bypass_anti_rb == null)
                 return false;
             return MainWindow.THIS.ui_opt_bypass_anti_rb.IsChecked == true;
+        }
+
+        static bool ReadContinueOnAntiRbFailOption()
+        {
+            if (!ReadBypassAntiRbOption())
+                return false;
+            if (MainWindow.THIS?.ui_opt_anti_rb_continue == null)
+                return false;
+            return MainWindow.THIS.ui_opt_anti_rb_continue.IsChecked == true;
         }
 
         static bool ReadAutoRebootOption()
@@ -230,9 +277,40 @@ namespace Xiaomi_Flash.Ui
             BuildPartitionTable(plan);
             ResetRowsForFlash();
             UpdateAutoRebootOptionUi(plan);
+            LogSkippedScriptSteps(plan);
+            LogFlashMethodHint(option);
             TerminalLog.Line("Firmware loaded [" + option.DisplayName + "]: " + plan.Steps.Count + " step(s)");
             SetMainProgress(0, option.DisplayName + " — " + option.Description);
             UpdateButtonState();
+        }
+
+        static void LogFlashMethodHint(RomFlashMethodOption option)
+        {
+            if (loadedPackage == null)
+                return;
+
+            bool hasFlashAll = File.Exists(Path.Combine(loadedPackage.RomRoot, "flash_all.bat"));
+            bool hasPayload = File.Exists(Path.Combine(loadedPackage.RomRoot, "payload.bin"));
+
+            if (option.Method == RomFlashMethod.Payload && hasFlashAll)
+            {
+                TerminalLog.Info(
+                    "Tip: payload.bin is OTA-style. For a full clean install on any Xiaomi device, prefer flash_all.bat.");
+            }
+            else if (hasFlashAll && hasPayload && option.Method != RomFlashMethod.Payload)
+            {
+                TerminalLog.Info("This package also contains payload.bin (OTA update mode).");
+            }
+        }
+
+        static void LogSkippedScriptSteps(RomFlashPlan plan)
+        {
+            if (plan.SkippedSteps.Count == 0)
+                return;
+
+            TerminalLog.Error("Script: " + plan.SkippedSteps.Count + " step(s) skipped (image not found):");
+            foreach (string entry in plan.SkippedSteps)
+                TerminalLog.Line("  - " + entry);
         }
 
         static void OnStartClicked()
@@ -254,6 +332,7 @@ namespace Xiaomi_Flash.Ui
                 return;
 
             sessionBypassAntiRb = ReadBypassAntiRbOption();
+            sessionContinueOnAntiRbFail = ReadContinueOnAntiRbFailOption();
             sessionAutoReboot = ReadAutoRebootOption();
             activeFlashSerial = serial;
             rebootStepExecuted = false;
@@ -262,33 +341,91 @@ namespace Xiaomi_Flash.Ui
                 ? "Auto reboot: included in script"
                 : "Auto reboot: " + (sessionAutoReboot ? "Yes" : "No");
 
+            string deviceSummary = FlashPrecheck.BuildFlashDeviceSummary(
+                serial, loadedRomRoot, loadedPlan, sessionBypassAntiRb);
+
             string optionsLine = "Mode: " + loadedPlan.ScriptFileName + "\n"
                 + loadedPlan.MethodDescription + "\n"
                 + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Yes" : "No") + "\n"
+                + (sessionBypassAntiRb
+                    ? "Continue if anti-RB fails: " + (sessionContinueOnAntiRbFail ? "Yes" : "No") + "\n"
+                    : "")
                 + rebootLine;
 
-            if (!FlashConfirmDialog.Show(loadedPlan.Steps.Count, loadedRomRoot, optionsLine))
+            if (!FlashConfirmDialog.Show(loadedPlan.Steps.Count, loadedRomRoot, deviceSummary, optionsLine))
                 return;
+
+            FlashPrecheck.LogFlashConfirmWarnings(serial, loadedRomRoot, loadedPlan);
 
             ResetRowsForFlash();
             TerminalCompletionBanner.Hide();
 
             if (loadedPlan.Kind == RomFlashKind.Payload)
             {
-                if (PayloadFastbootdGuard.BlocksPayloadFlash(serial))
-                    return;
-
                 flashing = true;
                 cancelRequested = false;
                 flashStartedAtUtc = DateTime.UtcNow;
                 UpdateButtonState();
                 TerminalLog.Action("Payload flash started");
                 SetMainProgress(0, "Preparing payload...");
-                FastbootDeviceService.RunPayloadFlash(loadedPlan.PayloadPath!, OnFlashFinished, sessionBypassAntiRb, loadedRomRoot);
+                FastbootDeviceService.RunPayloadFlash(
+                    loadedPlan.PayloadPath!,
+                    OnFlashFinished,
+                    sessionBypassAntiRb,
+                    loadedRomRoot,
+                    sessionContinueOnAntiRbFail,
+                    ApplyPayloadPartitionPlan,
+                    OnPayloadPartitionProgress);
                 return;
             }
 
-            BeginScriptFlash(serial, loadedPlan.Steps, sessionBypassAntiRb, sessionAutoReboot);
+            BeginScriptFlash(serial, loadedPlan.Steps, sessionBypassAntiRb, sessionContinueOnAntiRbFail, sessionAutoReboot);
+        }
+
+        static void ApplyPayloadPartitionPlan(List<string> partitionNames)
+        {
+            if (loadedPlan == null || partitionNames == null || partitionNames.Count == 0)
+                return;
+
+            loadedPlan.Steps.Clear();
+            foreach (string name in partitionNames)
+            {
+                loadedPlan.Steps.Add(new FlashScriptStep
+                {
+                    Kind = FlashScriptStepKind.Flash,
+                    DisplayName = name,
+                    Partition = name
+                });
+            }
+
+            MainWindow.THIS?.Dispatcher.Invoke(delegate
+            {
+                BuildPartitionTable(loadedPlan);
+                ResetRowsForFlash();
+            });
+        }
+
+        static void OnPayloadPartitionProgress(string partitionName, string phase)
+        {
+            int rowIndex = FindRowIndexByPartition(partitionName);
+            if (rowIndex < 0)
+                return;
+
+            switch (phase)
+            {
+                case "extract":
+                    UpdateRow(rowIndex, "[ EXTRACT ]", "[====-------] --");
+                    break;
+                case "flash":
+                    UpdateRow(rowIndex, "[ RUNNING ]", "[=======----] --");
+                    break;
+                case "ok":
+                    UpdateRow(rowIndex, "[ OK ]", "[##########] 100%", true);
+                    break;
+                case "failed":
+                    UpdateRow(rowIndex, "[ FAILED ]", "[##########] ERR", true);
+                    break;
+            }
         }
 
         static void ResetRowsForFlash()
@@ -364,7 +501,7 @@ namespace Xiaomi_Flash.Ui
             }
         }
 
-        static void BeginScriptFlash(string serial, List<FlashScriptStep> steps, bool bypassAntiRb, bool autoReboot)
+        static void BeginScriptFlash(string serial, List<FlashScriptStep> steps, bool bypassAntiRb, bool continueOnAntiRbFail, bool autoReboot)
         {
             cancelRequested = false;
             flashing = true;
@@ -375,7 +512,7 @@ namespace Xiaomi_Flash.Ui
 
             List<FlashScriptStep> queue = new List<FlashScriptStep>(steps);
             if (bypassAntiRb)
-                queue = RemoveAntiFlashSteps(queue);
+                queue = AntiRollbackBypass.FilterScriptSteps(queue);
 
             new Thread(new ThreadStart(delegate
             {
@@ -386,14 +523,18 @@ namespace Xiaomi_Flash.Ui
                     if (bypassAntiRb)
                     {
                         BeginStepProgress(0, "anti");
-                        bool antiOk = TryFlashAntiPartition(serial, loadedRomRoot);
+                        AntiRollbackBypass.ApplyResult antiResult = AntiRollbackBypass.Apply(
+                            serial,
+                            loadedRomRoot,
+                            true,
+                            continueOnAntiRbFail);
                         EndStepProgress();
-                        TerminalLog.StepResult("anti", antiOk);
+                        TerminalLog.StepResult("anti", antiResult.FlashSucceeded);
                         int antiRow = FindRowIndexByPartition("anti");
                         if (antiRow >= 0)
-                            UpdateRow(antiRow, antiOk ? "[ OK ]" : "[ FAILED ]",
-                                antiOk ? "[##########] 100%" : "[##########] ERR", true);
-                        if (!antiOk)
+                            UpdateRow(antiRow, antiResult.FlashSucceeded ? "[ OK ]" : "[ FAILED ]",
+                                antiResult.FlashSucceeded ? "[##########] 100%" : "[##########] ERR", true);
+                        if (!antiResult.ShouldProceed)
                             allOk = false;
                     }
 
@@ -443,19 +584,6 @@ namespace Xiaomi_Flash.Ui
             })).Start();
         }
 
-        static List<FlashScriptStep> RemoveAntiFlashSteps(List<FlashScriptStep> steps)
-        {
-            List<FlashScriptStep> filtered = new List<FlashScriptStep>();
-            foreach (FlashScriptStep step in steps)
-            {
-                if (step.Kind == FlashScriptStepKind.Flash
-                    && step.Partition.Equals("anti", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                filtered.Add(step);
-            }
-            return filtered;
-        }
-
         static int FindRowIndex(FlashScriptStep step)
         {
             for (int i = 0; i < loadedPlan.Steps.Count; i++)
@@ -481,24 +609,6 @@ namespace Xiaomi_Flash.Ui
                     return i;
             }
             return -1;
-        }
-
-        internal static bool TryFlashAntiPartition(string serial, string romRoot)
-        {
-            string antiImage = RomFlashScanner.FindAntiImage(romRoot);
-            if (string.IsNullOrEmpty(antiImage) || !File.Exists(antiImage))
-            {
-                TerminalLog.Error("Bypass anti_RB: anti image not found in ROM");
-                return false;
-            }
-
-            FlashScriptStep step = new FlashScriptStep
-            {
-                Kind = FlashScriptStepKind.Flash,
-                Partition = "anti",
-                ImagePath = antiImage
-            };
-            return ExecuteFlashStep(serial, step);
         }
 
         static bool ExecuteStep(string serial, FlashScriptStep step, bool autoReboot)

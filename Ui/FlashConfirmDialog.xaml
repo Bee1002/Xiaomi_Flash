@@ -46,6 +46,19 @@
 
                 <Border BorderBrush="#44FFFFFF" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,0,0,12">
                     <StackPanel>
+                        <TextBlock Text="[ DEVICE ]"
+                                   FontFamily="{StaticResource CpPixelFont}"
+                                   FontSize="7"
+                                   Foreground="#888888"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock x:Name="ui_device"
+                                   FontFamily="{StaticResource CpFont}"
+                                   FontSize="10.5"
+                                   TextWrapping="Wrap"
+                                   LineHeight="16"
+                                   Foreground="#CCCCCC"
+                                   Margin="0,0,0,12"/>
+
                         <TextBlock Text="[ ROM PATH ]"
                                    FontFamily="{StaticResource CpPixelFont}"
                                    FontSize="7"

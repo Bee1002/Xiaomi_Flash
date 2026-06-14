@@ -49,6 +49,15 @@ namespace Xiaomi_Flash.Ui
             return null;
         }
 
+        public static bool IsKnownCodename(string? codename)
+        {
+            if (string.IsNullOrWhiteSpace(codename))
+                return false;
+
+            EnsureLoaded();
+            return displayNames!.ContainsKey(codename.Trim());
+        }
+
         static void EnsureLoaded()
         {
             if (displayNames != null)

@@ -246,7 +246,10 @@
                             </StackPanel>
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
                                 <CheckBox x:Name="ui_opt_bypass_anti_rb" Content="Bypass anti_RB"
-                                          Style="{StaticResource FuturisticCheckBox}" Margin="0,0,20,0"/>
+                                          Style="{StaticResource FuturisticCheckBox}" Margin="0,0,16,0"/>
+                                <CheckBox x:Name="ui_opt_anti_rb_continue" Content="Continue if anti-RB fails"
+                                          Style="{StaticResource FuturisticCheckBox}" Margin="0,0,16,0"
+                                          IsEnabled="False"/>
                                 <CheckBox x:Name="ui_opt_autoreboot" Content="Auto reboot"
                                           Style="{StaticResource FuturisticCheckBox}" IsChecked="True"
                                           Margin="0,0,8,0"/>
@@ -259,11 +262,15 @@
                                     Background="#000000" Margin="0,6,0,0" Padding="10,8"
                                     HorizontalAlignment="Left" MinWidth="160" Visibility="Collapsed">
                                 <StackPanel>
-                                    <Button x:Name="ui_advanced_reset_efs" Content="&gt; Reset EFS"
+                                    <Button x:Name="ui_advanced_reset_efs" Content="&gt; Erase EFS/Qualcomm"
                                             Background="Transparent" Foreground="White" BorderThickness="0"
                                             Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
                                             FontFamily="Consolas" FontSize="11" Cursor="Hand"/>
                                     <Button x:Name="ui_advanced_fix_brick" Content="&gt; Fix / Brick"
+                                            Background="Transparent" Foreground="White" BorderThickness="0"
+                                            Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
+                                            FontFamily="Consolas" FontSize="11" Cursor="Hand"/>
+                                    <Button x:Name="ui_advanced_fix_oem" Content="&gt; Fix / OEM"
                                             Background="Transparent" Foreground="White" BorderThickness="0"
                                             Padding="4,3" Margin="0,2" HorizontalContentAlignment="Left"
                                             FontFamily="Consolas" FontSize="11" Cursor="Hand"/>

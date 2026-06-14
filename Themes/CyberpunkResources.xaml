@@ -11,7 +11,7 @@
 
     <FontFamily x:Key="CpFont">Consolas</FontFamily>
     <FontFamily x:Key="CpUiFont">Segoe UI</FontFamily>
-    <FontFamily x:Key="CpPixelFont">pack://application:,,,/Xiaomi_Flash;component/Fonts/#Press Start 2P</FontFamily>
+    <FontFamily x:Key="CpPixelFont">pack://application:,,,/Xiaomi_Flash;component/Assets/Fonts/#Press Start 2P</FontFamily>
 
     <!-- Ranuras de ventilación (rejilla bajo info del dispositivo) -->
     <VisualBrush x:Key="TechGridPattern" TileMode="Tile" Viewport="0,0,6,4" ViewportUnits="Absolute">

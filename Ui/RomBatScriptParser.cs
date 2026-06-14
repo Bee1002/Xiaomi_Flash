@@ -27,7 +27,7 @@ namespace Xiaomi_Flash.Ui
             @"^erase\s+(\S+)$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        public static List<FlashScriptStep> Parse(string batPath, string romRoot)
+        public static List<FlashScriptStep> Parse(string batPath, string romRoot, List<string>? skipped = null)
         {
             List<FlashScriptStep> steps = new List<FlashScriptStep>();
             string imagesDir = RomPackageResolver.GetImagesDir(romRoot);
@@ -46,7 +46,7 @@ namespace Xiaomi_Flash.Ui
                 if (IsSkippedCheckCommand(command))
                     continue;
 
-                FlashScriptStep step = ParseCommand(command, romRoot, imagesDir);
+                FlashScriptStep step = ParseCommand(command, romRoot, imagesDir, skipped);
                 if (step != null)
                     steps.Add(step);
             }
@@ -92,10 +92,10 @@ namespace Xiaomi_Flash.Ui
             return false;
         }
 
-        static FlashScriptStep ParseCommand(string command, string romRoot, string imagesDir)
+        static FlashScriptStep ParseCommand(string command, string romRoot, string imagesDir, List<string>? skipped)
         {
             if (command.StartsWith("flash ", StringComparison.OrdinalIgnoreCase))
-                return ParseFlash(command, romRoot, imagesDir);
+                return ParseFlash(command, romRoot, imagesDir, skipped);
 
             if (command.StartsWith("erase ", StringComparison.OrdinalIgnoreCase))
                 return ParseErase(command);
@@ -119,7 +119,7 @@ namespace Xiaomi_Flash.Ui
             return null;
         }
 
-        static FlashScriptStep ParseFlash(string command, string romRoot, string imagesDir)
+        static FlashScriptStep ParseFlash(string command, string romRoot, string imagesDir, List<string>? skipped)
         {
             Match match = FlashQuoted.Match(command);
             if (!match.Success)
@@ -132,7 +132,10 @@ namespace Xiaomi_Flash.Ui
             string imageRaw = match.Groups[3].Value.Trim();
             string imagePath = ResolveImagePath(imageRaw, romRoot, imagesDir);
             if (!File.Exists(imagePath))
+            {
+                skipped?.Add(partition + " (missing: " + imageRaw + ")");
                 return null;
+            }
 
             return new FlashScriptStep
             {

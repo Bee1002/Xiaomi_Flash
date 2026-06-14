@@ -13,6 +13,23 @@ namespace Xiaomi_Flash.Ui
 
         public static FastbootData? Current => cachedData;
 
+        public static bool TryGetCached(string serial, out FastbootData? data)
+        {
+            data = null;
+            if (string.IsNullOrWhiteSpace(serial))
+                return false;
+
+            if (cachedData != null
+                && cachedSerial != null
+                && cachedSerial.Equals(serial, StringComparison.OrdinalIgnoreCase))
+            {
+                data = cachedData;
+                return true;
+            }
+
+            return false;
+        }
+
         public static FastbootData GetOrLoad(string serial)
         {
             if (string.IsNullOrWhiteSpace(serial))

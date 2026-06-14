@@ -33,11 +33,23 @@ namespace Xiaomi_Flash.Ui
             Action onComplete = null) =>
             FastbootUI.RunStepCommand(serial, cmd, stepCount, showDialogOnDone, skipVarRefresh, onComplete);
 
+        public static void RunStepCommandChecked(
+            string serial,
+            string cmd,
+            int stepCount,
+            bool showDialogOnDone,
+            bool skipVarRefresh,
+            Action<bool> onComplete) =>
+            FastbootUI.RunStepCommandChecked(serial, cmd, stepCount, showDialogOnDone, skipVarRefresh, onComplete);
+
         public static void RunPayloadFlash(
             string path,
             Action<bool> onComplete,
             bool bypassAntiRb = false,
-            string romRoot = null) =>
-            FastbootUI.RunPayloadFlash(path, onComplete, bypassAntiRb, romRoot);
+            string romRoot = null,
+            bool continueOnAntiRbFail = false,
+            Action<System.Collections.Generic.List<string>> onPayloadReady = null,
+            Action<string, string> onPartitionProgress = null) =>
+            FastbootUI.RunPayloadFlash(path, onComplete, bypassAntiRb, romRoot, continueOnAntiRbFail, onPayloadReady, onPartitionProgress);
     }
 }

@@ -5,18 +5,19 @@ namespace Xiaomi_Flash.Ui
 {
     public partial class FlashConfirmDialog : Window
     {
-        FlashConfirmDialog(int stepCount, string romPath, string optionsLine)
+        FlashConfirmDialog(int stepCount, string romPath, string deviceSummary, string optionsLine)
         {
             InitializeComponent();
             Owner = MainWindow.THIS;
             ui_headline.Text = "FLASH " + stepCount + " STEP(S)?";
+            ui_device.Text = deviceSummary ?? "";
             ui_rom_path.Text = romPath ?? "";
             ui_options.Text = optionsLine ?? "";
         }
 
-        public static bool Show(int stepCount, string romPath, string optionsLine)
+        public static bool Show(int stepCount, string romPath, string deviceSummary, string optionsLine)
         {
-            var dialog = new FlashConfirmDialog(stepCount, romPath, optionsLine);
+            var dialog = new FlashConfirmDialog(stepCount, romPath, deviceSummary, optionsLine);
             return dialog.ShowDialog() == true;
         }
 

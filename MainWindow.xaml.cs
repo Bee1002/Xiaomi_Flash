@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Xiaomi_Flash.Ui;
 
 namespace Xiaomi_Flash
@@ -44,6 +45,8 @@ namespace Xiaomi_Flash
 
             PayloadUI.init();
             FastbootDeviceService.Initialize();
+
+            AddHandler(UIElement.PreviewMouseDownEvent, new MouseButtonEventHandler(Window_PreviewMouseDownDismissMenus), true);
 
             Closed += delegate
             {
@@ -109,6 +112,45 @@ namespace Xiaomi_Flash
             if (ui_reboot_menu != null)
                 ui_reboot_menu.Visibility = ui_reboot_menu.Visibility == Visibility.Visible
                     ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        void Window_PreviewMouseDownDismissMenus(object sender, MouseButtonEventArgs e)
+        {
+            if (!IsDropdownMenuOpen())
+                return;
+
+            if (e.OriginalSource is DependencyObject source && IsInsideDropdownAnchor(source))
+                return;
+
+            HideDropdownMenus();
+        }
+
+        static bool IsDropdownMenuOpen()
+        {
+            return MainWindow.THIS.ui_advanced_menu?.Visibility == Visibility.Visible
+                || MainWindow.THIS.ui_reboot_menu?.Visibility == Visibility.Visible;
+        }
+
+        static void HideDropdownMenus()
+        {
+            FastbootAdvanced.HideMenu();
+            FastbootRebootMenu.HideMenu();
+        }
+
+        static bool IsInsideDropdownAnchor(DependencyObject source)
+        {
+            while (source != null)
+            {
+                if (source == MainWindow.THIS.ui_advanced_menu
+                    || source == MainWindow.THIS.ui_reboot_menu
+                    || source == MainWindow.THIS.ui_advanced
+                    || source == MainWindow.THIS.ui_reboot)
+                    return true;
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
         }
 
         private void InitPreviewUi()

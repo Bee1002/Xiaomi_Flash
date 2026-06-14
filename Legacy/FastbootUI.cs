@@ -335,6 +335,9 @@ namespace Xiaomi_Flash
 
         static void load_fastboot_vars()
         {
+            if (FastbootFlashSession.IsFlashing)
+                return;
+
             // Reiniciar estado antes de cargar variables fastboot
             FastbootDeviceDataCache.Invalidate(cur_serial);
             fastbootData = null;
@@ -491,7 +494,8 @@ namespace Xiaomi_Flash
             public bool show_dialog_on_done;
             public bool skip_var_refresh;
             public Action on_complete;
-            public StepCmdRunnerParam(string serial, string cmd, int step_count, bool hint_on_done, bool skip_var_refresh, Action on_complete)
+            public Action<bool> on_complete_with_result;
+            public StepCmdRunnerParam(string serial, string cmd, int step_count, bool hint_on_done, bool skip_var_refresh, Action on_complete, Action<bool> on_complete_with_result)
             {
                 this.serial = serial;
                 this.cmd = cmd;
@@ -499,12 +503,33 @@ namespace Xiaomi_Flash
                 this.show_dialog_on_done = hint_on_done;
                 this.skip_var_refresh = skip_var_refresh;
                 this.on_complete = on_complete;
+                this.on_complete_with_result = on_complete_with_result;
+            }
+        }
+
+        static bool ExecuteStepCommand(string serial, string cmd, int stepCount, Action<string> logLine)
+        {
+            lock (FastbootGate.Sync)
+            {
+                int count = 0;
+                return Fastboot.Run(serial, cmd, delegate (string err)
+                {
+                    logLine(err);
+
+                    if (stepCount > 0)
+                        MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
+                        {
+                            MainWindow.THIS.fastboot_progress_bar.Value = ++count * 100 / stepCount;
+                            Helper.TaskbarItemHelper.update(count * 100 / stepCount);
+                        }));
+                }, Fastboot.GetRebootTimeoutMs(cmd));
             }
         }
 
         static void step_cmd_runner_err(object raw_param)
         {
             StepCmdRunnerParam param = (StepCmdRunnerParam)raw_param;
+            bool success = false;
 
             FastbootGate.EnterCritical();
             try
@@ -516,21 +541,7 @@ namespace Xiaomi_Flash
                         MainWindow.THIS.fastboot_progress_bar.IsIndeterminate = true;
                 }));
 
-                lock (FastbootGate.Sync)
-                {
-                    int count = 0;
-                    Fastboot.Run(param.serial, param.cmd, delegate (string err)
-                    {
-                        appendLog(err);
-
-                        if (param.step_count > 0)
-                            MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
-                            {
-                                MainWindow.THIS.fastboot_progress_bar.Value = ++count * 100 / param.step_count;
-                                Helper.TaskbarItemHelper.update(count * 100 / param.step_count);
-                            }));
-                    }, Fastboot.GetRebootTimeoutMs(param.cmd));
-                }
+                success = ExecuteStepCommand(param.serial, param.cmd, param.step_count, appendLog);
             }
             finally
             {
@@ -539,11 +550,12 @@ namespace Xiaomi_Flash
 
             MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
             {
-                if (!param.skip_var_refresh)
+                if (!param.skip_var_refresh && !FastbootFlashSession.IsFlashing)
                     load_fastboot_vars();
-                if (param.show_dialog_on_done)
+                if (param.show_dialog_on_done && success)
                     MessageBox.Show(Properties.Resources.operation_completed);
                 param.on_complete?.Invoke();
+                param.on_complete_with_result?.Invoke(success);
             }));
         }
 
@@ -570,8 +582,23 @@ namespace Xiaomi_Flash
 
         public static void RunStepCommand(string serial, string cmd, int stepCount, bool showDialogOnDone, bool skipVarRefresh, Action onComplete = null)
         {
+            if (FastbootFlashSession.IsFlashing)
+                return;
+
             new Thread(new ParameterizedThreadStart(step_cmd_runner_err))
-                .Start(new StepCmdRunnerParam(serial, cmd, stepCount, showDialogOnDone, skipVarRefresh, onComplete));
+                .Start(new StepCmdRunnerParam(serial, cmd, stepCount, showDialogOnDone, skipVarRefresh, onComplete, null));
+        }
+
+        public static void RunStepCommandChecked(string serial, string cmd, int stepCount, bool showDialogOnDone, bool skipVarRefresh, Action<bool> onComplete)
+        {
+            if (FastbootFlashSession.IsFlashing)
+            {
+                onComplete?.Invoke(false);
+                return;
+            }
+
+            new Thread(new ParameterizedThreadStart(step_cmd_runner_err))
+                .Start(new StepCmdRunnerParam(serial, cmd, stepCount, showDialogOnDone, skipVarRefresh, null, onComplete));
         }
 
         static void runStep(string cmd, int stepCount, bool showDialogOnDone, bool skipVarRefresh = false)
@@ -951,7 +978,14 @@ namespace Xiaomi_Flash
 
         }
 
-        public static void RunPayloadFlash(string path, Action<bool> onComplete, bool bypassAntiRb = false, string romRoot = null)
+        public static void RunPayloadFlash(
+            string path,
+            Action<bool> onComplete,
+            bool bypassAntiRb = false,
+            string romRoot = null,
+            bool continueOnAntiRbFail = false,
+            Action<System.Collections.Generic.List<string>> onPayloadReady = null,
+            Action<string, string> onPartitionProgress = null)
         {
             if (!EnsureFastbootDevice(out string serial))
             {
@@ -1005,14 +1039,21 @@ namespace Xiaomi_Flash
                     return;
                 }
 
-                TerminalLog.Action("Payload flash: " + payload.manifest.Partitions.Count + " partitions");
+                System.Collections.Generic.List<string> partitionNames = new System.Collections.Generic.List<string>();
+                foreach (ChromeosUpdateEngine.PartitionUpdate partitionUpdate in payload.manifest.Partitions)
+                    partitionNames.Add(partitionUpdate.PartitionName);
+
+                onPayloadReady?.Invoke(partitionNames);
+                TerminalLog.Action("Payload flash: " + partitionNames.Count + " partitions");
 
                 new Thread(new ThreadStart(delegate
                 {
                     bool ok = PayloadFlashExecutor.Run(
                         serial, payload, PAYLOAD_TMP, appendLog, bypassAntiRb, romRoot,
+                        continueOnAntiRbFail,
                         onError: msg => MainWindow.THIS.Dispatcher.Invoke(
-                            () => MessageBox.Show(msg)));
+                            () => MessageBox.Show(msg)),
+                        onPartitionProgress: onPartitionProgress);
                     payload.Dispose();
                     MainWindow.THIS.Dispatcher.BeginInvoke(new Action(delegate
                     {

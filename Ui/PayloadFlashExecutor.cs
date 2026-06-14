@@ -17,7 +17,9 @@ namespace Xiaomi_Flash.Ui
             Action<string> log,
             bool bypassAntiRb = false,
             string? romRoot = null,
-            Action<string>? onError = null)
+            bool continueOnAntiRbFail = false,
+            Action<string>? onError = null,
+            Action<string, string>? onPartitionProgress = null)
         {
             if (string.IsNullOrWhiteSpace(serial) || payload == null)
                 return false;
@@ -30,8 +32,9 @@ namespace Xiaomi_Flash.Ui
             {
                 if (bypassAntiRb && !string.IsNullOrEmpty(romRoot))
                 {
-                    log("Bypass anti_RB...");
-                    if (!FastbootFlashSession.TryFlashAntiPartition(serial, romRoot))
+                    AntiRollbackBypass.ApplyResult antiResult = AntiRollbackBypass.Apply(
+                        serial, romRoot, true, continueOnAntiRbFail, log);
+                    if (!antiResult.ShouldProceed)
                         ok = false;
                 }
 
@@ -40,6 +43,7 @@ namespace Xiaomi_Flash.Ui
 
                 foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
                 {
+                    onPartitionProgress?.Invoke(partitionUpdate.PartitionName, "extract");
                     log("Extracting " + partitionUpdate.PartitionName);
                     Payload.PayloadExtractionException? extractError = payload.extract(
                         partitionUpdate.PartitionName, tmpDir, false, false);
@@ -48,6 +52,7 @@ namespace Xiaomi_Flash.Ui
                     {
                         log("ERROR: " + extractError.Message);
                         onError?.Invoke(extractError.Message);
+                        onPartitionProgress?.Invoke(partitionUpdate.PartitionName, "failed");
                         return false;
                     }
 
@@ -56,6 +61,7 @@ namespace Xiaomi_Flash.Ui
 
                 foreach (PartitionUpdate partitionUpdate in payload.manifest.Partitions)
                 {
+                    onPartitionProgress?.Invoke(partitionUpdate.PartitionName, "flash");
                     lock (FastbootGate.Sync)
                     {
                         string flashCmd = "flash \"" + partitionUpdate.PartitionName + "\" \""
@@ -63,9 +69,12 @@ namespace Xiaomi_Flash.Ui
                         if (!Fastboot.Run(serial, flashCmd, log))
                         {
                             onError?.Invoke("Flash failed: " + partitionUpdate.PartitionName);
+                            onPartitionProgress?.Invoke(partitionUpdate.PartitionName, "failed");
                             return false;
                         }
                     }
+
+                    onPartitionProgress?.Invoke(partitionUpdate.PartitionName, "ok");
                 }
 
                 return true;
