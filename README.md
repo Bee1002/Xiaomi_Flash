@@ -10,7 +10,8 @@ Fastboot flasher for Xiaomi devices. Version **2.0.1 By Xploit** — UI redesign
 - Load Xiaomi ROM packages (`flash_all.bat`, `flash_all_lock.bat`, `flash_all_except_storage.bat`, `payload.bin`, or loose `images\`)
 - Step-by-step flash progress with partition table and terminal log
 - Payload.bin flashing in fastbootd
-- Options: bypass anti-rollback, auto reboot
+- Options: expert downgrade (anti-rollback bypass), auto reboot
+- Anti-rollback check aligned with `flash_all.bat` / Mi Flash (blocks unsafe downgrades)
 - Advanced: Reset EFS, Fix / Brick, Slot A/B switch
 - Reboot to system, fastboot, or recovery
 
@@ -78,7 +79,8 @@ Connect phone (fastboot) → LOAD FIRMWARE → choose Mode → START → wait �
      - `Images only` — flashes every `.img` in `images\`
 
 5. **Set options**
-   - **Bypass anti_RB** — flashes the `anti` partition from the ROM before other steps (use only when you understand rollback implications).
+   - **Expert: allow downgrade** — only for intentional downgrades: flashes the ROM `anti` partition first, then continues. Ignored when the anti-rollback check already passes (normal flash).
+   - **Continue if anti flash fails** — enabled only with expert mode; rarely needed.
    - **Auto reboot** — reboots when the script does not include `reboot`.
 
 6. **Start flashing**
@@ -105,7 +107,8 @@ Connect phone (fastboot) → LOAD FIRMWARE → choose Mode → START → wait �
 
 - **`flash_all.bat` wipes userdata** — back up photos, apps, and accounts first.
 - **`flash_all_lock.bat` locks the bootloader** — may restrict future flashing and custom ROMs.
-- **Anti-rollback** — flashing an older ROM than the device allows can fail or brick. The anti-rollback index is shown in the device panel. Use **Bypass anti_RB** only with a matching `anti` image and when you accept the risk.
+- **Anti-rollback** — before script flash, the tool compares device `anti` vs `images/anti_version.txt` (same rule as `flash_all.bat`). If the device index is higher than the ROM, **START is blocked** unless **Expert: allow downgrade** is enabled. Downgrading without a matching `anti` image can hard-brick.
+- **Large partitions (`super`)** — can take 20–40 minutes; use a stable USB cable/port; do not unplug mid-flash.
 - **Wrong ROM** — never flash a package for a different codename/model.
 - **USB stability** — use a good cable and USB 2.0/3.0 port; do not unplug during transfers.
 - **Battery** — keep the device charged; avoid flashing on a dying battery.
@@ -149,7 +152,7 @@ Output: `bin\x64\Release\net8.0-windows\Xiaomi_Flash.exe`
 
 No external NuGet restore is required; dependencies are bundled in the repository.
 
-`fastboot.exe` is always the bundled **x86** binary (launched as a child process). Only the in-process LZMA library differs: `liblzma.dll` (x86 builds) or `liblzma64.dll` (x64 builds).
+`fastboot.exe` is always the bundled **x86** platform-tools binary (launched as a child process). Production builds ship **r28.0.3** for stable sparse/`super` flashing on Xiaomi devices. If a ROM includes its own `tools\fastboot.exe`, that copy is preferred at runtime. Only the in-process LZMA library differs: `liblzma.dll` (x86 builds) or `liblzma64.dll` (x64 builds).
 
 ### Visual Studio (XAML designer)
 
@@ -289,6 +292,25 @@ Self-contained builds also bundle the .NET 8 runtime DLLs next to the executable
 - Android Platform Tools (`fastboot.exe`)
 - [DotNetZip](https://github.com/DinoChiesa/DotNetZip) — BZip2 decompressor module (MIT)
 - [Google Protobuf](https://github.com/protocolbuffers/protobuf) (BSD-3-Clause)
+
+## Project status (v2.0.1)
+
+**Scope closed for fastboot ROM flashing** — guided workflow (LOAD → START), script/payload modes, Advanced tools, anti-rollback gate, and production installer/ZIP.
+
+| Keep locally (distribution / dev) | Regenerable (safe to delete) |
+|-----------------------------------|------------------------------|
+| `publish\installer\` — setup `.exe` | `publish\self-contained\` (x86 publish) |
+| `publish\zip\` — portable ZIP | `publish\framework-dependent\` |
+| `publish\self-contained-x64\` — input for Inno Setup | `bin\Release\`, `bin\x86\`, `obj\` |
+| `bin\Debug\` — Visual Studio debug | `.vs\` (close VS first) |
+
+Rebuild everything with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\Build-Production.ps1 -Obfuscate -Zip -Installer
+```
+
+Legacy engine code under `Legacy/` and hidden XAML hosts remain **intentional** (device poll, Advanced, payload path) — do not remove without migrating `FastbootUI` first. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## License
 
