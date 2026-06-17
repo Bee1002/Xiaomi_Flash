@@ -6,7 +6,8 @@ using Xiaomi_Flash;
 namespace Xiaomi_Flash.Ui
 {
     /// <summary>
-    /// Bypass anti-rollback compartido entre flash por script (.bat) y payload.bin.
+    /// Bypass anti-rollback para downgrade experto: flashea partición anti antes del script.
+    /// Solo se ejecuta cuando el check anti-RB del ROM falla y el usuario activó la opción expert.
     /// </summary>
     internal static class AntiRollbackBypass
     {
@@ -35,7 +36,7 @@ namespace Xiaomi_Flash.Ui
                 return new ApplyResult(false, false, true);
 
             Action<string> log = logLine ?? FastbootDeviceService.AppendTerminalLog;
-            log("Bypass anti_RB...");
+            log("Expert downgrade: flashing anti partition...");
 
             bool flashOk = TryFlashAntiPartition(serial, romRoot, log);
             if (flashOk)
@@ -57,7 +58,7 @@ namespace Xiaomi_Flash.Ui
             string antiImage = RomFlashScanner.FindAntiImage(romRoot);
             if (string.IsNullOrEmpty(antiImage) || !File.Exists(antiImage))
             {
-                LogError(log, "Bypass anti_RB: anti image not found in ROM");
+                LogError(log, "Expert downgrade: anti image not found in ROM");
                 return false;
             }
 
@@ -91,7 +92,7 @@ namespace Xiaomi_Flash.Ui
 
         static void LogContinueAfterFailure(Action<string> log)
         {
-            const string message = "Bypass anti_RB failed — continuing flash (user override)";
+            const string message = "Anti partition flash failed — continuing flash (user override)";
             if (log == FastbootDeviceService.AppendTerminalLog)
                 TerminalLog.Error(message);
             else

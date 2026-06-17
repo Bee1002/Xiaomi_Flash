@@ -32,7 +32,7 @@ namespace Xiaomi_Flash
 
             process = new Process();
 
-            process.StartInfo.FileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fastboot.exe");
+            process.StartInfo.FileName = FastbootExecutable.ResolvePath();
 
             process.StartInfo.Arguments = serial == null ? action :
 
@@ -124,11 +124,15 @@ namespace Xiaomi_Flash
 
                 {
 
-                    readTask.Wait(2000);
+                    readTask.Wait(TimeSpan.FromSeconds(30));
 
                 }
 
                 catch (AggregateException) { }
+
+                if (proc.ExitCode != 0)
+
+                    failed = true;
 
             }
 

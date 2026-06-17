@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows;
 using Xiaomi_Flash;
 
@@ -17,10 +16,6 @@ namespace Xiaomi_Flash.Ui
             Locked,
             Unlocked
         }
-
-        static readonly Regex AntiVersionInName = new Regex(
-            @"^anti(?:[_-]?v?(\d+)|_rollback[_-]?(\d+))?$",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         public static string BuildFlashDeviceSummary(string serial, string romRoot, RomFlashPlan plan, bool bypassAntiRb)
         {
@@ -43,23 +38,23 @@ namespace Xiaomi_Flash.Ui
                 summary.AppendLine("! Codename mismatch — wrong ROM can brick the device");
             }
 
-            if (TryParseAntiVersion(GetDeviceAntiRollbackCached(serial), out int deviceAnti))
+            AntiRollbackCheck.Evaluation antiEval = AntiRollbackCheck.Evaluate(serial, romRoot, plan);
+            summary.AppendLine("Device anti-RB: " + AntiRollbackCheck.FormatDeviceAntiForDisplay(antiEval));
+
+            if (antiEval.RomSource != AntiRollbackCheck.RomAntiSource.None)
+                summary.AppendLine("ROM anti-RB: " + AntiRollbackCheck.FormatRomAntiForDisplay(antiEval));
+            else if (PlanFlashesAntiPartition(plan))
+                summary.AppendLine("ROM anti-RB: not verified from package");
+
+            if (antiEval.Status == AntiRollbackCheck.Status.DowngradeBlocked)
             {
-                summary.AppendLine("Device anti-RB: " + deviceAnti);
-                if (TryResolveRomAntiVersion(romRoot, plan, out int romAnti))
-                {
-                    summary.AppendLine("ROM anti-RB: " + romAnti);
-                    if (romAnti < deviceAnti)
-                    {
-                        summary.AppendLine("! Anti-rollback downgrade risk");
-                        if (bypassAntiRb)
-                            summary.AppendLine("  (Bypass anti_RB is enabled)");
-                    }
-                }
-                else if (PlanFlashesAntiPartition(plan))
-                {
-                    summary.AppendLine("ROM anti-RB: not verified from package");
-                }
+                summary.AppendLine("! Anti-rollback check FAILED (flash_all.bat would abort)");
+                if (bypassAntiRb)
+                    summary.AppendLine("  Expert downgrade enabled — flash anti first, high brick risk");
+            }
+            else if (antiEval.Status == AntiRollbackCheck.Status.Pass && antiEval.AppliesScriptCheck)
+            {
+                summary.AppendLine("Anti-rollback check: pass");
             }
 
             AppendVabWarningsCached(summary, serial);
@@ -76,7 +71,7 @@ namespace Xiaomi_Flash.Ui
             return summary.ToString().TrimEnd();
         }
 
-        public static void LogFlashConfirmWarnings(string serial, string romRoot, RomFlashPlan plan)
+        public static void LogFlashConfirmWarnings(string serial, string romRoot, RomFlashPlan plan, bool bypassAntiRb)
         {
             if (ResolveBootloaderStateCached(serial) == BootloaderState.Locked)
                 TerminalLog.Error("Flash started with bootloader LOCKED (user confirmed)");
@@ -90,11 +85,12 @@ namespace Xiaomi_Flash.Ui
                 TerminalLog.Error("Codename mismatch override — device: " + deviceCodename + ", ROM: " + romCodename);
             }
 
-            if (TryParseAntiVersion(GetDeviceAntiRollbackCached(serial), out int deviceAnti)
-                && TryResolveRomAntiVersion(romRoot, plan, out int romAnti)
-                && romAnti < deviceAnti)
+            AntiRollbackCheck.Evaluation antiEval = AntiRollbackCheck.Evaluate(serial, romRoot, plan);
+            if (antiEval.Status == AntiRollbackCheck.Status.DowngradeBlocked && bypassAntiRb)
             {
-                TerminalLog.Error("Anti-rollback downgrade override — device: " + deviceAnti + ", ROM: " + romAnti);
+                TerminalLog.Error(
+                    "Expert downgrade override — device anti: " + antiEval.DeviceAnti
+                    + ", ROM anti: " + AntiRollbackCheck.FormatRomAntiForDisplay(antiEval));
             }
         }
 
@@ -159,24 +155,6 @@ namespace Xiaomi_Flash.Ui
             FastbootData? data = TryGetCachedFastbootData(serial);
             if (data != null && !string.IsNullOrWhiteSpace(data.product))
                 return data.product;
-
-            return null;
-        }
-
-        static string? GetDeviceAntiRollbackCached(string serial)
-        {
-            if (FastbootAutoProbe.TryGetCached(serial, out DeviceHardwareSnapshot? cached)
-                && cached != null
-                && !string.IsNullOrWhiteSpace(cached.AntiRollback))
-                return cached.AntiRollback.Trim();
-
-            FastbootData? data = TryGetCachedFastbootData(serial);
-            if (data != null)
-            {
-                string? fromVars = FastbootVarHelper.FirstVar(data.bootloader_vars, "anti", "rollback_ver", "rollback-index");
-                if (!string.IsNullOrWhiteSpace(fromVars))
-                    return fromVars.Trim();
-            }
 
             return null;
         }
@@ -256,33 +234,6 @@ namespace Xiaomi_Flash.Ui
             return true;
         }
 
-        static bool TryResolveRomAntiVersion(string romRoot, RomFlashPlan plan, out int version)
-        {
-            version = 0;
-
-            string antiImage = RomFlashScanner.FindAntiImage(romRoot);
-            if (!string.IsNullOrEmpty(antiImage)
-                && TryParseAntiVersionFromFileName(System.IO.Path.GetFileNameWithoutExtension(antiImage), out version))
-                return true;
-
-            if (plan != null)
-            {
-                foreach (FlashScriptStep step in plan.Steps)
-                {
-                    if (step.Kind != FlashScriptStepKind.Flash
-                        || !step.Partition.Equals("anti", StringComparison.OrdinalIgnoreCase)
-                        || string.IsNullOrEmpty(step.ImagePath))
-                        continue;
-
-                    if (TryParseAntiVersionFromFileName(
-                            System.IO.Path.GetFileNameWithoutExtension(step.ImagePath), out version))
-                        return true;
-                }
-            }
-
-            return false;
-        }
-
         static bool PlanFlashesAntiPartition(RomFlashPlan plan)
         {
             if (plan == null)
@@ -293,57 +244,6 @@ namespace Xiaomi_Flash.Ui
                 if (step.Kind == FlashScriptStepKind.Flash
                     && step.Partition.Equals("anti", StringComparison.OrdinalIgnoreCase))
                     return true;
-            }
-
-            return false;
-        }
-
-        internal static bool TryParseAntiVersionFromFileName(string fileNameWithoutExtension, out int version)
-        {
-            version = 0;
-            if (string.IsNullOrWhiteSpace(fileNameWithoutExtension))
-                return false;
-
-            string name = fileNameWithoutExtension.Trim();
-            if (name.Equals("anti", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            Match match = AntiVersionInName.Match(name);
-            if (!match.Success)
-            {
-                Match trailing = Regex.Match(name, @"(\d+)$", RegexOptions.CultureInvariant);
-                if (!trailing.Success || !name.StartsWith("anti", StringComparison.OrdinalIgnoreCase))
-                    return false;
-
-                return int.TryParse(trailing.Groups[1].Value, out version);
-            }
-
-            string raw = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
-            return int.TryParse(raw, out version);
-        }
-
-        static bool TryParseAntiVersion(string raw, out int version)
-        {
-            version = 0;
-            if (string.IsNullOrWhiteSpace(raw))
-                return false;
-
-            string trimmed = raw.Trim();
-            if (int.TryParse(trimmed, out version))
-                return true;
-
-            Match hex = Regex.Match(trimmed, @"^0x([0-9a-fA-F]+)$", RegexOptions.CultureInvariant);
-            if (hex.Success)
-            {
-                try
-                {
-                    version = Convert.ToInt32(hex.Groups[1].Value, 16);
-                    return true;
-                }
-                catch (OverflowException)
-                {
-                    return false;
-                }
             }
 
             return false;

@@ -26,6 +26,7 @@ namespace Xiaomi_Flash.Ui
 
         static bool sessionBypassAntiRb;
         static bool sessionContinueOnAntiRbFail;
+        static bool sessionApplyBypassFlash;
         static bool sessionAutoReboot;
         static bool rebootStepExecuted;
         static bool suppressMethodChange;
@@ -337,6 +338,23 @@ namespace Xiaomi_Flash.Ui
             activeFlashSerial = serial;
             rebootStepExecuted = false;
 
+            AntiRollbackCheck.Evaluation antiEval = AntiRollbackCheck.Evaluate(serial, loadedRomRoot, loadedPlan);
+            if (!AntiRollbackCheck.TryEnsureCanStartFlash(
+                    serial, loadedRomRoot, loadedPlan, sessionBypassAntiRb, out _, out string blockMessage))
+            {
+                TerminalLog.Error("Anti-rollback check blocked flash start");
+                MessageBox.Show(
+                    blockMessage,
+                    "Anti-rollback check",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
+            sessionApplyBypassFlash = AntiRollbackCheck.ShouldApplyBypassFlash(sessionBypassAntiRb, antiEval);
+            if (sessionBypassAntiRb && !sessionApplyBypassFlash)
+                TerminalLog.Info("Expert downgrade option enabled but anti-rollback check passed — normal flash");
+
             string rebootLine = PlanIncludesReboot(loadedPlan)
                 ? "Auto reboot: included in script"
                 : "Auto reboot: " + (sessionAutoReboot ? "Yes" : "No");
@@ -346,16 +364,19 @@ namespace Xiaomi_Flash.Ui
 
             string optionsLine = "Mode: " + loadedPlan.ScriptFileName + "\n"
                 + loadedPlan.MethodDescription + "\n"
-                + "Bypass anti_RB: " + (sessionBypassAntiRb ? "Yes" : "No") + "\n"
-                + (sessionBypassAntiRb
-                    ? "Continue if anti-RB fails: " + (sessionContinueOnAntiRbFail ? "Yes" : "No") + "\n"
+                + "Expert downgrade: " + (sessionApplyBypassFlash ? "Yes (flash anti first)" : "No") + "\n"
+                + (sessionApplyBypassFlash
+                    ? "Continue if anti flash fails: " + (sessionContinueOnAntiRbFail ? "Yes" : "No") + "\n"
                     : "")
                 + rebootLine;
 
             if (!FlashConfirmDialog.Show(loadedPlan.Steps.Count, loadedRomRoot, deviceSummary, optionsLine))
                 return;
 
-            FlashPrecheck.LogFlashConfirmWarnings(serial, loadedRomRoot, loadedPlan);
+            FlashPrecheck.LogFlashConfirmWarnings(serial, loadedRomRoot, loadedPlan, sessionBypassAntiRb);
+
+            FastbootExecutable.SetRomRoot(loadedRomRoot);
+            TerminalLog.Info("fastboot: " + FastbootExecutable.GetVersionText());
 
             ResetRowsForFlash();
             TerminalCompletionBanner.Hide();
@@ -371,7 +392,7 @@ namespace Xiaomi_Flash.Ui
                 FastbootDeviceService.RunPayloadFlash(
                     loadedPlan.PayloadPath!,
                     OnFlashFinished,
-                    sessionBypassAntiRb,
+                    sessionApplyBypassFlash,
                     loadedRomRoot,
                     sessionContinueOnAntiRbFail,
                     ApplyPayloadPartitionPlan,
@@ -379,7 +400,7 @@ namespace Xiaomi_Flash.Ui
                 return;
             }
 
-            BeginScriptFlash(serial, loadedPlan.Steps, sessionBypassAntiRb, sessionContinueOnAntiRbFail, sessionAutoReboot);
+            BeginScriptFlash(serial, loadedPlan.Steps, sessionApplyBypassFlash, sessionContinueOnAntiRbFail, sessionAutoReboot);
         }
 
         static void ApplyPayloadPartitionPlan(List<string> partitionNames)
@@ -501,7 +522,7 @@ namespace Xiaomi_Flash.Ui
             }
         }
 
-        static void BeginScriptFlash(string serial, List<FlashScriptStep> steps, bool bypassAntiRb, bool continueOnAntiRbFail, bool autoReboot)
+        static void BeginScriptFlash(string serial, List<FlashScriptStep> steps, bool applyBypassFlash, bool continueOnAntiRbFail, bool autoReboot)
         {
             cancelRequested = false;
             flashing = true;
@@ -511,7 +532,7 @@ namespace Xiaomi_Flash.Ui
             SetMainProgress(0, "Starting flash...");
 
             List<FlashScriptStep> queue = new List<FlashScriptStep>(steps);
-            if (bypassAntiRb)
+            if (applyBypassFlash)
                 queue = AntiRollbackBypass.FilterScriptSteps(queue);
 
             new Thread(new ThreadStart(delegate
@@ -520,7 +541,7 @@ namespace Xiaomi_Flash.Ui
                 FastbootGate.EnterCritical();
                 try
                 {
-                    if (bypassAntiRb)
+                    if (applyBypassFlash)
                     {
                         BeginStepProgress(0, "anti");
                         AntiRollbackBypass.ApplyResult antiResult = AntiRollbackBypass.Apply(
@@ -561,6 +582,13 @@ namespace Xiaomi_Flash.Ui
                             continue;
                         }
 
+                        if (!allOk)
+                        {
+                            if (rowIndex >= 0)
+                                UpdateRow(rowIndex, "[ SKIPPED ]", "[-----------] --", true);
+                            continue;
+                        }
+
                         if (rowIndex >= 0)
                             UpdateRow(rowIndex, "[ RUNNING ]", "[====-------] --");
 
@@ -573,7 +601,12 @@ namespace Xiaomi_Flash.Ui
                             UpdateRow(rowIndex, ok ? "[ OK ]" : "[ FAILED ]",
                                 ok ? "[##########] 100%" : "[##########] ERR", true);
                         if (!ok)
+                        {
                             allOk = false;
+                            TerminalLog.Error("Flash stopped at " + FormatStepName(step) + " — fix this step before rebooting.");
+                            MarkRemainingStepsSkipped(queue, i + 1);
+                            break;
+                        }
                     }
                 }
                 finally
@@ -598,6 +631,16 @@ namespace Xiaomi_Flash.Ui
                     return i;
             }
             return -1;
+        }
+
+        static void MarkRemainingStepsSkipped(List<FlashScriptStep> queue, int fromIndex)
+        {
+            for (int j = fromIndex; j < queue.Count; j++)
+            {
+                int rowIndex = FindRowIndex(queue[j]);
+                if (rowIndex >= 0)
+                    UpdateRow(rowIndex, "[ SKIPPED ]", "[-----------] --", true);
+            }
         }
 
         static int FindRowIndexByPartition(string partition)
@@ -665,6 +708,7 @@ namespace Xiaomi_Flash.Ui
         {
             flashing = false;
             cancelRequested = false;
+            FastbootExecutable.SetRomRoot(null);
 
             TimeSpan elapsed = flashStartedAtUtc != default
                 ? DateTime.UtcNow - flashStartedAtUtc

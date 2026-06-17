@@ -245,9 +245,9 @@
                                           DisplayMemberPath="DisplayName"/>
                             </StackPanel>
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                                <CheckBox x:Name="ui_opt_bypass_anti_rb" Content="Bypass anti_RB"
+                                <CheckBox x:Name="ui_opt_bypass_anti_rb" Content="Expert: allow downgrade"
                                           Style="{StaticResource FuturisticCheckBox}" Margin="0,0,16,0"/>
-                                <CheckBox x:Name="ui_opt_anti_rb_continue" Content="Continue if anti-RB fails"
+                                <CheckBox x:Name="ui_opt_anti_rb_continue" Content="Continue if anti flash fails"
                                           Style="{StaticResource FuturisticCheckBox}" Margin="0,0,16,0"
                                           IsEnabled="False"/>
                                 <CheckBox x:Name="ui_opt_autoreboot" Content="Auto reboot"
