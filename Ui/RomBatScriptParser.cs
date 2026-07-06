@@ -30,7 +30,8 @@ namespace Xiaomi_Flash.Ui
         public static List<FlashScriptStep> Parse(string batPath, string romRoot, List<string>? skipped = null)
         {
             List<FlashScriptStep> steps = new List<FlashScriptStep>();
-            string imagesDir = RomPackageResolver.GetImagesDir(romRoot);
+            string batDir = Path.GetDirectoryName(Path.GetFullPath(batPath)) ?? romRoot;
+            string imagesDir = RomPackageResolver.GetImagesDir(romRoot, batDir);
 
             foreach (string rawLine in File.ReadAllLines(batPath))
             {
@@ -46,7 +47,7 @@ namespace Xiaomi_Flash.Ui
                 if (IsSkippedCheckCommand(command))
                     continue;
 
-                FlashScriptStep step = ParseCommand(command, romRoot, imagesDir, skipped);
+                FlashScriptStep step = ParseCommand(command, batDir, romRoot, imagesDir, skipped);
                 if (step != null)
                     steps.Add(step);
             }
@@ -92,10 +93,10 @@ namespace Xiaomi_Flash.Ui
             return false;
         }
 
-        static FlashScriptStep ParseCommand(string command, string romRoot, string imagesDir, List<string>? skipped)
+        static FlashScriptStep ParseCommand(string command, string batDir, string romRoot, string imagesDir, List<string>? skipped)
         {
             if (command.StartsWith("flash ", StringComparison.OrdinalIgnoreCase))
-                return ParseFlash(command, romRoot, imagesDir, skipped);
+                return ParseFlash(command, batDir, romRoot, imagesDir, skipped);
 
             if (command.StartsWith("erase ", StringComparison.OrdinalIgnoreCase))
                 return ParseErase(command);
@@ -119,7 +120,7 @@ namespace Xiaomi_Flash.Ui
             return null;
         }
 
-        static FlashScriptStep ParseFlash(string command, string romRoot, string imagesDir, List<string>? skipped)
+        static FlashScriptStep ParseFlash(string command, string batDir, string romRoot, string imagesDir, List<string>? skipped)
         {
             Match match = FlashQuoted.Match(command);
             if (!match.Success)
@@ -130,10 +131,11 @@ namespace Xiaomi_Flash.Ui
             string extra = match.Groups[1].Success ? match.Groups[1].Value.Trim() : "";
             string partition = match.Groups[2].Value.Trim();
             string imageRaw = match.Groups[3].Value.Trim();
-            string imagePath = ResolveImagePath(imageRaw, romRoot, imagesDir);
+            string imagePath = ResolveImagePath(imageRaw, batDir, romRoot, imagesDir);
             if (!File.Exists(imagePath))
             {
-                skipped?.Add(partition + " (missing: " + imageRaw + ")");
+                string resolvedHint = ExpandBatchDrivePath(imageRaw, batDir);
+                skipped?.Add(partition + " (missing: " + Path.GetFileName(resolvedHint) + " in " + imagesDir + ")");
                 return null;
             }
 
@@ -186,18 +188,79 @@ namespace Xiaomi_Flash.Ui
             };
         }
 
-        static string ResolveImagePath(string raw, string romRoot, string imagesDir)
+        static string ResolveImagePath(string raw, string batDir, string romRoot, string imagesDir)
         {
-            string path = raw.Replace("%~dp0", romRoot + Path.DirectorySeparatorChar);
-            path = path.Replace('/', Path.DirectorySeparatorChar);
+            string path = ExpandBatchDrivePath(raw, batDir);
             if (File.Exists(path))
                 return Path.GetFullPath(path);
 
-            string byName = Path.Combine(imagesDir, Path.GetFileName(path));
-            if (File.Exists(byName))
-                return Path.GetFullPath(byName);
+            string fileName = Path.GetFileName(path);
+            foreach (string dir in RomPackageResolver.GetImageSearchDirs(romRoot, batDir, imagesDir))
+            {
+                string candidate = Path.Combine(dir, fileName);
+                if (File.Exists(candidate))
+                    return Path.GetFullPath(candidate);
+            }
+
+            string? sparseSuper = FindSparseSuperImage(romRoot, batDir, imagesDir);
+            if (sparseSuper != null
+                && fileName.Equals("super.img", StringComparison.OrdinalIgnoreCase))
+                return sparseSuper;
 
             return Path.GetFullPath(path);
+        }
+
+        static string ExpandBatchDrivePath(string raw, string batDir)
+        {
+            string path = raw.Trim().Trim('"');
+            string batPrefix = EnsureTrailingSeparator(batDir);
+
+            path = ReplaceOrdinalIgnoreCase(path, "%~dp0", batPrefix);
+            path = ReplaceOrdinalIgnoreCase(path, "%dp0", batPrefix);
+            path = ReplaceOrdinalIgnoreCase(path, "%~d0", batPrefix);
+
+            string batPrefixNoSlash = batPrefix.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            path = ReplaceOrdinalIgnoreCase(path, "%CD%", batPrefixNoSlash);
+            path = ReplaceOrdinalIgnoreCase(path, "%cd%", batPrefixNoSlash);
+
+            path = path.Replace('/', Path.DirectorySeparatorChar);
+            return path;
+        }
+
+        static string? FindSparseSuperImage(string romRoot, string batDir, string imagesDir)
+        {
+            foreach (string dir in RomPackageResolver.GetImageSearchDirs(romRoot, batDir, imagesDir))
+            {
+                if (!Directory.Exists(dir))
+                    continue;
+
+                string direct = Path.Combine(dir, "super.img");
+                if (File.Exists(direct))
+                    return Path.GetFullPath(direct);
+            }
+
+            return null;
+        }
+
+        static string EnsureTrailingSeparator(string dir)
+        {
+            string full = Path.GetFullPath(dir);
+            if (!full.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)
+                && !full.EndsWith(Path.AltDirectorySeparatorChar.ToString(), StringComparison.Ordinal))
+                full += Path.DirectorySeparatorChar;
+            return full;
+        }
+
+        static string ReplaceOrdinalIgnoreCase(string input, string oldValue, string newValue)
+        {
+            int idx = input.IndexOf(oldValue, StringComparison.OrdinalIgnoreCase);
+            while (idx >= 0)
+            {
+                input = input.Substring(0, idx) + newValue + input.Substring(idx + oldValue.Length);
+                idx = input.IndexOf(oldValue, idx + newValue.Length, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return input;
         }
     }
 }

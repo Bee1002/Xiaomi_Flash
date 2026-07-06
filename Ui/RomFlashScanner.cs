@@ -56,8 +56,8 @@ namespace Xiaomi_Flash.Ui
 
             if (IsScriptMethod(methodOption.Method))
             {
-                string batPath = Path.Combine(package.RomRoot, methodOption.ScriptFileName);
-                if (File.Exists(batPath))
+                string? batPath = RomPackageResolver.FindScriptPath(package.RomRoot, methodOption.ScriptFileName);
+                if (batPath != null)
                 {
                     List<string> skipped = new List<string>();
                     plan.Steps.AddRange(RomBatScriptParser.Parse(batPath, package.RomRoot, skipped));
@@ -119,8 +119,8 @@ namespace Xiaomi_Flash.Ui
 
             foreach (string batName in new[] { "flash_all.bat", "flash_all_lock.bat", "flash_all_except_storage.bat" })
             {
-                string batPath = Path.Combine(romRoot, batName);
-                if (!File.Exists(batPath))
+                string? batPath = RomPackageResolver.FindScriptPath(romRoot, batName);
+                if (batPath == null)
                     continue;
 
                 foreach (FlashScriptStep step in RomBatScriptParser.Parse(batPath, romRoot))
@@ -143,10 +143,10 @@ namespace Xiaomi_Flash.Ui
             if (files.Length > 0)
                 return Path.GetFullPath(files[0]);
 
-            string batPath = Path.Combine(romRoot, "flash_all.bat");
-            if (!File.Exists(batPath))
-                batPath = Path.Combine(romRoot, "flash_all_lock.bat");
-            if (!File.Exists(batPath))
+            string? batPath = RomPackageResolver.FindScriptPath(romRoot, "flash_all.bat");
+            if (batPath == null)
+                batPath = RomPackageResolver.FindScriptPath(romRoot, "flash_all_lock.bat");
+            if (batPath == null)
                 return null;
 
             foreach (FlashScriptStep step in RomBatScriptParser.Parse(batPath, romRoot))

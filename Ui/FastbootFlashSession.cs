@@ -264,10 +264,22 @@ namespace Xiaomi_Flash.Ui
                 return;
 
             RomFlashPlan plan = RomFlashScanner.Scan(loadedPackage, option);
-            if (plan.Kind == RomFlashKind.None || plan.Steps.Count == 0)
+            int flashStepCount = 0;
+            foreach (FlashScriptStep step in plan.Steps)
+            {
+                if (step.Kind == FlashScriptStepKind.Flash)
+                    flashStepCount++;
+            }
+
+            if (plan.Kind == RomFlashKind.None || plan.Steps.Count == 0
+                || (flashStepCount == 0 && plan.SkippedSteps.Count > 0))
             {
                 MessageBox.Show(
-                    "Could not read flash steps for: " + option.DisplayName,
+                    flashStepCount == 0 && plan.SkippedSteps.Count > 0
+                        ? "The flash script was found but no firmware images were detected.\n\n"
+                          + "Extract the full Fastboot ROM (.tgz) with 7-Zip until flash_all.bat and a populated images\\ folder are in the same directory.\n\n"
+                          + RomPackageResolver.DescribeRomLayout(loadedPackage.RomRoot)
+                        : "Could not read flash steps for: " + option.DisplayName,
                     "LOAD FIRMWARE",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
@@ -312,6 +324,26 @@ namespace Xiaomi_Flash.Ui
             TerminalLog.Error("Script: " + plan.SkippedSteps.Count + " step(s) skipped (image not found):");
             foreach (string entry in plan.SkippedSteps)
                 TerminalLog.Line("  - " + entry);
+
+            int flashSteps = 0;
+            foreach (FlashScriptStep step in plan.Steps)
+            {
+                if (step.Kind == FlashScriptStepKind.Flash)
+                    flashSteps++;
+            }
+
+            if (plan.SkippedSteps.Count > 0 && flashSteps == 0)
+            {
+                TerminalLog.Error(
+                    "No flash images were found. Extract the full Fastboot ROM (.tgz) with 7-Zip until you see flash_all.bat and a populated images\\ folder side by side.");
+                TerminalLog.Info(
+                    "Tip: avoid nested folders (ROM\\ROM\\...) and paths with spaces. Select the folder that contains both flash_all.bat and images\\.");
+            }
+            else if (plan.SkippedSteps.Count > flashSteps)
+            {
+                TerminalLog.Info(
+                    "Some images are missing — re-extract the ROM or verify the images\\ folder is complete.");
+            }
         }
 
         static void OnStartClicked()
